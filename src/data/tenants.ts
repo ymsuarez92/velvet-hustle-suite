@@ -70,9 +70,9 @@ export const TENANTS: Record<string, Tenant> = {
     ],
     hero: {
       eyebrow: "Members-only grooming house",
-      title: "Premium\nGrooming\nExperience",
+      title: "Premium Grooming\nExperience",
       subtitle:
-        "An intimate, member-first house for considered haircuts, hot-towel rituals and bespoke beard sculpting — in the heart of Miami.",
+        "A private grooming club where master barbers, considered rituals, and a serene atelier come together for the modern gentleman.",
       image: heroImg,
     },
     stats: [
