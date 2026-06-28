@@ -77,9 +77,11 @@ function TenantLanding() {
 
 function Navbar({ tenant }: { tenant: Tenant }) {
   const links = [
+    { href: "#home", label: "Home" },
     { href: "#services", label: "Services" },
     { href: "#memberships", label: "Memberships" },
     { href: "#gallery", label: "Gallery" },
+    { href: "#testimonials", label: "About" },
     { href: "#contact", label: "Contact" },
   ];
   return (
@@ -89,24 +91,36 @@ function Navbar({ tenant }: { tenant: Tenant }) {
           <span className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background">
             <Crown className="h-4 w-4 text-[color:var(--champagne)]" />
           </span>
-          <span className="font-display text-lg leading-none tracking-tight md:text-xl">{tenant.name}</span>
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-lg tracking-tight md:text-xl">{tenant.name}</span>
+            <span className="mt-1 text-[9px] uppercase tracking-[0.3em] text-[color:var(--bronze)]">Barber Club</span>
+          </span>
         </Link>
-        <nav className="hidden items-center gap-9 md:flex">
+        <nav className="hidden items-center gap-7 md:flex">
           {links.map((l) => (
-            <a key={l.href} href={l.href} className="text-xs uppercase tracking-[0.22em] text-foreground/70 transition hover:text-[color:var(--bronze)]">
+            <a key={l.href} href={l.href} className="text-[13px] font-medium text-foreground/75 transition hover:text-[color:var(--bronze)]">
               {l.label}
             </a>
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          <div className="hidden items-center rounded-full bg-foreground p-1 text-[11px] font-medium md:flex">
+            <span className="rounded-full bg-background px-3 py-1 text-foreground">EN</span>
+            <span className="px-3 py-1 text-background/70">ES</span>
+          </div>
+          <a href="#book" className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
+            <MessageCircle className="h-3.5 w-3.5" /> Book
+          </a>
           <Link
             to="/b/$slug/admin"
             params={{ slug: tenant.slug }}
-            className="hidden text-xs uppercase tracking-[0.22em] text-foreground/60 hover:text-foreground md:block"
+            className="hidden text-[11px] uppercase tracking-[0.22em] text-foreground/50 hover:text-foreground md:block"
           >
             Admin
           </Link>
-          <a href="#book" className="btn-luxury !py-2.5 !text-[11px]">Book now</a>
+          <a href="#memberships" className="inline-flex items-center gap-2 rounded-full bg-[color:var(--bronze)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--cream)] transition hover:opacity-90">
+            Join Membership
+          </a>
         </div>
       </div>
     </header>
@@ -115,46 +129,56 @@ function Navbar({ tenant }: { tenant: Tenant }) {
 
 function Hero({ tenant }: { tenant: Tenant }) {
   return (
-    <section className="relative overflow-hidden">
-      <div className="container-luxury grid gap-12 py-16 md:grid-cols-12 md:gap-10 md:py-24 lg:py-32">
+    <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
+      <div className="container-luxury grid gap-12 py-16 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
         <div className="md:col-span-6 lg:col-span-6">
-          <p className="eyebrow animate-fade-up">{tenant.hero.eyebrow}</p>
-          <h1 className="mt-6 whitespace-pre-line font-display text-[2.75rem] leading-[0.95] md:text-7xl lg:text-8xl animate-fade-up">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--champagne)]/60 bg-[color:var(--champagne)]/20 px-4 py-1.5 text-xs text-foreground/80 animate-fade-up">
+            <Star className="h-3.5 w-3.5 fill-[color:var(--bronze)] text-[color:var(--bronze)]" strokeWidth={0} />
+            Rated 5.0 by 1,400+ members
+          </div>
+          <h1 className="mt-7 whitespace-pre-line font-display text-[2.75rem] leading-[1] md:text-7xl lg:text-[5.25rem] animate-fade-up">
             {tenant.hero.title.split("\n").map((line, i) => (
               <span key={i} className="block">
                 {i === 1 ? <span className="italic text-[color:var(--bronze)]">{line}</span> : line}
               </span>
             ))}
           </h1>
-          <div className="hairline mt-8" />
-          <p className="mt-6 max-w-lg text-base text-muted-foreground md:text-lg animate-fade-up">
+          <p className="mt-7 max-w-md text-base text-muted-foreground md:text-lg animate-fade-up">
             {tenant.hero.subtitle}
           </p>
-          <div className="mt-10 flex flex-wrap gap-3 animate-fade-up">
-            <a href="#book" className="btn-luxury">Book appointment</a>
-            <a href="#memberships" className="btn-ghost-luxury">Join membership</a>
+          <div className="mt-9 flex flex-wrap items-center gap-3 animate-fade-up">
+            <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
+              <MessageCircle className="h-4 w-4" /> Book via WhatsApp <ArrowRight className="h-4 w-4" />
+            </a>
+            <a href="#services" className="inline-flex items-center gap-2 rounded-full bg-[color:var(--bronze)] px-6 py-3.5 text-sm font-medium text-[color:var(--cream)] transition hover:opacity-90">
+              Explore Services
+            </a>
+            <a href="#memberships" className="text-sm font-medium text-foreground/75 underline-offset-4 hover:underline">
+              Join Membership
+            </a>
           </div>
-          <div className="mt-14 grid grid-cols-2 gap-6 md:grid-cols-4">
+          <div className="mt-12 grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-background/60 backdrop-blur md:grid-cols-4 md:divide-y-0">
             {tenant.stats.map((s) => (
-              <div key={s.label}>
-                <p className="font-display text-3xl md:text-4xl">{s.value}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{s.label}</p>
+              <div key={s.label} className="px-5 py-6">
+                <p className="font-display text-3xl md:text-[2rem]">{s.value}</p>
+                <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
-        <div className="md:col-span-6 lg:col-span-6">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-[var(--shadow-luxury)] animate-fade-in">
+        <div className="relative md:col-span-6 lg:col-span-6">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] shadow-[var(--shadow-luxury)] animate-fade-in">
             <img src={tenant.hero.image} alt={tenant.name} className="h-full w-full object-cover" />
-            <div className="absolute inset-0" style={{ background: "var(--gradient-hero-overlay)" }} />
-            <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
-              <div className="text-[color:var(--cream)]">
-                <p className="text-[10px] uppercase tracking-[0.3em] opacity-80">Featured ritual</p>
-                <p className="mt-2 font-display text-2xl">Hot Towel Shave</p>
-              </div>
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-[color:var(--champagne)] text-charcoal">
-                <ArrowRight className="h-5 w-5" />
-              </span>
+          </div>
+          <div className="absolute -bottom-6 left-4 right-4 mx-auto flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-[var(--shadow-luxury)] backdrop-blur md:left-auto md:right-6 md:max-w-[260px]">
+            <div className="flex -space-x-2">
+              {["https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=80","https://images.pexels.com/photos/697509/pexels-photo-697509.jpeg?auto=compress&cs=tinysrgb&w=80","https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=80"].map((src) => (
+                <img key={src} src={src} alt="" className="h-9 w-9 rounded-full border-2 border-background object-cover" loading="lazy" />
+              ))}
+            </div>
+            <div>
+              <p className="text-sm font-semibold leading-tight">Members love it</p>
+              <p className="text-xs text-muted-foreground">Join 1,400+ gentlemen</p>
             </div>
           </div>
         </div>
@@ -305,7 +329,7 @@ function Gallery({ tenant }: { tenant: Tenant }) {
 
 function Testimonials({ tenant }: { tenant: Tenant }) {
   return (
-    <section className="bg-secondary/50 py-24 md:py-32">
+    <section id="testimonials" className="bg-secondary/50 py-24 md:py-32">
       <div className="container-luxury">
         <SectionHeader eyebrow="Members" title="In their words" />
         <div className="mt-16 grid gap-6 md:grid-cols-3">
