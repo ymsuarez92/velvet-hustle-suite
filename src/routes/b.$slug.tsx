@@ -226,15 +226,15 @@ function Services({ tenant }: { tenant: Tenant }) {
 
 function Memberships({ tenant }: { tenant: Tenant }) {
   return (
-    <section id="memberships" className="relative overflow-hidden bg-foreground py-24 text-background md:py-32">
-      <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, var(--champagne) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--champagne) 0%, transparent 45%)" }} />
+    <section id="memberships" className="relative overflow-hidden py-24 md:py-32" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.92 0.03 80) 100%)" }}>
+      <div className="absolute inset-0 opacity-[0.5]" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, var(--champagne) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--champagne) 0%, transparent 45%)" }} />
       <div className="container-luxury relative">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow" style={{ color: "var(--champagne)" }}>Memberships</p>
-          <h2 className="mt-4 font-display text-4xl text-[color:var(--cream)] md:text-5xl lg:text-6xl">
+          <p className="eyebrow">Memberships</p>
+          <h2 className="mt-4 font-display text-4xl text-foreground md:text-5xl lg:text-6xl">
             Belong to the house
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-base text-[color:var(--cream)]/70">
+          <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground">
             Three tiers. One philosophy. Choose the ritual cadence that fits your life.
           </p>
         </div>
@@ -245,8 +245,8 @@ function Memberships({ tenant }: { tenant: Tenant }) {
               key={m.id}
               className={`relative rounded-2xl border p-8 transition ${
                 m.highlight
-                  ? "border-[color:var(--champagne)] bg-[color:var(--cream)] text-foreground shadow-[var(--shadow-champagne)] md:-translate-y-3"
-                  : "border-white/15 bg-white/[0.04] text-[color:var(--cream)] hover:border-white/30"
+                  ? "border-[color:var(--bronze)] bg-card text-foreground shadow-[var(--shadow-champagne)] md:-translate-y-3"
+                  : "border-border bg-card/70 text-foreground backdrop-blur hover:border-[color:var(--champagne)]"
               }`}
             >
               {m.badge && (
@@ -254,23 +254,21 @@ function Memberships({ tenant }: { tenant: Tenant }) {
                   {m.badge}
                 </span>
               )}
-              <p className="eyebrow" style={{ color: m.highlight ? "var(--bronze)" : "var(--champagne)" }}>
-                {m.name}
-              </p>
+              <p className="eyebrow">{m.name}</p>
               <div className="mt-5 flex items-baseline gap-1">
                 <span className="font-display text-6xl">${m.price}</span>
                 <span className="text-sm opacity-70">/month</span>
               </div>
-              <div className={`my-7 h-px ${m.highlight ? "bg-foreground/10" : "bg-white/15"}`} />
+              <div className="my-7 h-px bg-foreground/10" />
               <ul className="space-y-3">
                 {m.benefits.map((b) => (
                   <li key={b} className="flex items-start gap-3 text-sm">
-                    <Check className={`mt-0.5 h-4 w-4 shrink-0 ${m.highlight ? "text-[color:var(--bronze)]" : "text-[color:var(--champagne)]"}`} />
-                    <span className={m.highlight ? "text-foreground/85" : "text-[color:var(--cream)]/85"}>{b}</span>
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--bronze)]" />
+                    <span className="text-foreground/85">{b}</span>
                   </li>
                 ))}
               </ul>
-              <button className={`mt-8 w-full ${m.highlight ? "btn-luxury" : "btn-ghost-luxury !text-[color:var(--cream)] !border-white/30 hover:!bg-[color:var(--cream)] hover:!text-charcoal"}`}>
+              <button className={`mt-8 w-full ${m.highlight ? "btn-luxury" : "btn-ghost-luxury"}`}>
                 Join {m.name}
               </button>
             </div>
