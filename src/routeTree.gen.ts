@@ -10,33 +10,52 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BSlugRouteImport } from './routes/b.$slug'
+import { Route as BSlugAdminRouteImport } from './routes/b.$slug.admin'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BSlugRoute = BSlugRouteImport.update({
+  id: '/b/$slug',
+  path: '/b/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BSlugAdminRoute = BSlugAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => BSlugRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/b/$slug': typeof BSlugRouteWithChildren
+  '/b/$slug/admin': typeof BSlugAdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/b/$slug': typeof BSlugRouteWithChildren
+  '/b/$slug/admin': typeof BSlugAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/b/$slug': typeof BSlugRouteWithChildren
+  '/b/$slug/admin': typeof BSlugAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/b/$slug' | '/b/$slug/admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/b/$slug' | '/b/$slug/admin'
+  id: '__root__' | '/' | '/b/$slug' | '/b/$slug/admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BSlugRoute: typeof BSlugRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +67,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/b/$slug': {
+      id: '/b/$slug'
+      path: '/b/$slug'
+      fullPath: '/b/$slug'
+      preLoaderRoute: typeof BSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/b/$slug/admin': {
+      id: '/b/$slug/admin'
+      path: '/admin'
+      fullPath: '/b/$slug/admin'
+      preLoaderRoute: typeof BSlugAdminRouteImport
+      parentRoute: typeof BSlugRoute
+    }
   }
 }
 
+interface BSlugRouteChildren {
+  BSlugAdminRoute: typeof BSlugAdminRoute
+}
+
+const BSlugRouteChildren: BSlugRouteChildren = {
+  BSlugAdminRoute: BSlugAdminRoute,
+}
+
+const BSlugRouteWithChildren = BSlugRoute._addFileChildren(BSlugRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BSlugRoute: BSlugRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
