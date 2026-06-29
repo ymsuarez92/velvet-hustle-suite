@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyAccess } from "@/lib/access.functions";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -18,9 +19,15 @@ function AuthPage() {
     setError(null);
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setLoading(false); setError(error.message); return; }
+    const access = await getMyAccess().catch(() => null);
     setLoading(false);
-    if (error) { setError(error.message); return; }
-    navigate({ to: "/admin" });
+    if (access?.isSuperAdmin) { navigate({ to: "/admin" }); return; }
+    if (access && access.businessSlugs.length > 0) {
+      navigate({ to: "/b/$slug/admin", params: { slug: access.businessSlugs[0] } });
+      return;
+    }
+    navigate({ to: "/forbidden" });
   }
 
   return (
