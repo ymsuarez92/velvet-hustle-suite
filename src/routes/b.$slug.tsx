@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getPublicTenant, type PublicTenant } from "@/lib/tenants.functions";
 import { BookingDialog } from "@/components/booking-dialog";
 import { useI18n } from "@/lib/i18n";
