@@ -1018,6 +1018,90 @@ function CreateUserModal({ tenants, submitting, onClose, onSubmit }: {
   );
 }
 
+type RoleAssignment = { role: "super_admin" | "business_admin" | "staff"; businessId?: string | null };
+
+function EditUserRolesModal({
+  user,
+  tenants,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  user: PlatformUser;
+  tenants: AdminTenant[];
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (roles: RoleAssignment[]) => Promise<void>;
+}) {
+  const [isSuper, setIsSuper] = useState(user.roles.some((r) => r.role === "super_admin"));
+  const [assignments, setAssignments] = useState<RoleAssignment[]>(
+    user.roles
+      .filter((r) => r.role !== "super_admin")
+      .map((r) => ({ role: r.role as "business_admin" | "staff", businessId: r.business_id })),
+  );
+
+  const addAssignment = () => {
+    if (!tenants[0]) return;
+    setAssignments([...assignments, { role: "business_admin", businessId: tenants[0].id }]);
+  };
+  const updateAssignment = (i: number, patch: Partial<RoleAssignment>) => {
+    setAssignments(assignments.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  };
+  const removeAssignment = (i: number) => setAssignments(assignments.filter((_, idx) => idx !== i));
+
+  const submit = async () => {
+    const roles: RoleAssignment[] = [];
+    if (isSuper) roles.push({ role: "super_admin", businessId: null });
+    for (const a of assignments) {
+      if (a.businessId) roles.push({ role: a.role, businessId: a.businessId });
+    }
+    await onSubmit(roles);
+  };
+
+  return (
+    <Modal onClose={onClose} title={`Roles de ${user.email}`}>
+      <div className="space-y-5">
+        <label className="flex items-start gap-3 rounded-xl border p-4 cursor-pointer hover:border-[color:var(--bronze)]">
+          <input type="checkbox" checked={isSuper} onChange={(e) => setIsSuper(e.target.checked)} className="mt-1" />
+          <div>
+            <p className="font-medium text-sm">Super admin de la plataforma</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Acceso total al dashboard global y todos los tenants.</p>
+          </div>
+        </label>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tenants asignados</p>
+            <button type="button" onClick={addAssignment} disabled={!tenants.length} className="text-xs rounded-full border px-3 py-1 hover:border-[color:var(--bronze)] disabled:opacity-50">+ Añadir tenant</button>
+          </div>
+          {assignments.length === 0 && <p className="text-xs text-muted-foreground py-3">Sin tenants asignados. El usuario no podrá administrar ningún negocio.</p>}
+          <div className="space-y-2">
+            {assignments.map((a, i) => (
+              <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center rounded-xl border p-2">
+                <select value={a.businessId ?? ""} onChange={(e) => updateAssignment(i, { businessId: e.target.value })} className="rounded-md border bg-background px-3 py-2 text-sm min-w-0">
+                  {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                <select value={a.role} onChange={(e) => updateAssignment(i, { role: e.target.value as any })} className="rounded-md border bg-background px-3 py-2 text-sm">
+                  <option value="business_admin">Owner</option>
+                  <option value="staff">Staff</option>
+                </select>
+                <button type="button" onClick={() => removeAssignment(i)} className="rounded-full border border-red-300 px-2.5 py-1.5 text-xs text-red-700">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm">Cancelar</button>
+          <button onClick={submit} disabled={submitting} className="btn-luxury">
+            {submitting ? "Guardando…" : "Guardar roles"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 /* ============== TEMPLATES ============== */
 
 function TemplatesSection() {
