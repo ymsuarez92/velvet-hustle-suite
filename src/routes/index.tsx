@@ -49,6 +49,7 @@ function Index() {
               Visit a demo house
             </Link>
             <a href="#houses" className="btn-ghost-luxury">Explore houses</a>
+            <Link to="/auth" className="btn-ghost-luxury">Sign in</Link>
           </div>
         </div>
       </section>
