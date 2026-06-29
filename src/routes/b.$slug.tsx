@@ -75,7 +75,7 @@ function TenantLanding() {
 
 /* ------------------------------------------------------------------ */
 
-function Navbar({ tenant }: { tenant: Tenant }) {
+function Navbar({ tenant }: { tenant: PublicTenant }) {
   const links = [
     { href: "#home", label: "Home" },
     { href: "#services", label: "Services" },
@@ -127,7 +127,7 @@ function Navbar({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Hero({ tenant }: { tenant: Tenant }) {
+function Hero({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
       <div className="container-luxury grid gap-12 py-16 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
@@ -187,7 +187,7 @@ function Hero({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Pillars({ tenant }: { tenant: Tenant }) {
+function Pillars({ tenant }: { tenant: PublicTenant }) {
   const map = { scissors: Scissors, sparkles: Sparkles, crown: Crown, star: Star } as const;
   return (
     <section className="border-y bg-secondary/40">
@@ -217,7 +217,7 @@ function SectionHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: s
   );
 }
 
-function Services({ tenant }: { tenant: Tenant }) {
+function Services({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="services" className="container-luxury py-24 md:py-32">
       <SectionHeader eyebrow="Our craft" title="Considered rituals" subtitle="A short, deliberate menu of grooming rituals — each performed unhurried, by hand." />
@@ -248,7 +248,7 @@ function Services({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Memberships({ tenant }: { tenant: Tenant }) {
+function Memberships({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="memberships" className="relative overflow-hidden py-24 md:py-32" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.92 0.03 80) 100%)" }}>
       <div className="absolute inset-0 opacity-[0.5]" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, var(--champagne) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--champagne) 0%, transparent 45%)" }} />
@@ -303,7 +303,7 @@ function Memberships({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Gallery({ tenant }: { tenant: Tenant }) {
+function Gallery({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="gallery" className="container-luxury py-24 md:py-32">
       <SectionHeader eyebrow="The house" title="A glimpse inside" subtitle="Quiet corners, warm light and the unhurried craft of being well-kept." />
@@ -327,7 +327,7 @@ function Gallery({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Testimonials({ tenant }: { tenant: Tenant }) {
+function Testimonials({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="testimonials" className="bg-secondary/50 py-24 md:py-32">
       <div className="container-luxury">
@@ -355,7 +355,7 @@ function Testimonials({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Contact({ tenant }: { tenant: Tenant }) {
+function Contact({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="contact" className="container-luxury py-24 md:py-32">
       <div id="book" className="grid gap-12 lg:grid-cols-2 lg:gap-20">
@@ -418,7 +418,7 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
   );
 }
 
-function Footer({ tenant }: { tenant: Tenant }) {
+function Footer({ tenant }: { tenant: PublicTenant }) {
   return (
     <footer className="border-t bg-secondary/40">
       <div className="container-luxury py-12 flex flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
@@ -439,7 +439,7 @@ function Footer({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function WhatsAppFab({ tenant }: { tenant: Tenant }) {
+function WhatsAppFab({ tenant }: { tenant: PublicTenant }) {
   return (
     <a
       href={`https://wa.me/${tenant.whatsapp}`}
