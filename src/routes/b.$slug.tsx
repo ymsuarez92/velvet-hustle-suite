@@ -165,11 +165,11 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             {tenant.hero.subtitle}
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3 animate-fade-up">
-            <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
-              <MessageCircle className="h-4 w-4" /> Book via WhatsApp <ArrowRight className="h-4 w-4" />
-            </a>
-            <a href="#services" className="inline-flex items-center gap-2 rounded-full bg-[color:var(--bronze)] px-6 py-3.5 text-sm font-medium text-[color:var(--cream)] transition hover:opacity-90">
-              Explore Services
+            <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
+              Book your visit <ArrowRight className="h-4 w-4" />
+            </button>
+            <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[color:var(--bronze)] px-6 py-3.5 text-sm font-medium text-[color:var(--cream)] transition hover:opacity-90">
+              <MessageCircle className="h-4 w-4" /> WhatsApp
             </a>
             <a href="#memberships" className="text-sm font-medium text-foreground/75 underline-offset-4 hover:underline">
               Join Membership
