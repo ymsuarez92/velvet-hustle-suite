@@ -84,7 +84,7 @@ function TenantLanding() {
         open={booking.open}
         onClose={() => setBooking({ open: false })}
         slug={tenant.slug}
-        services={tenant.services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin, price: s.price }))}
+        services={tenant.services.map((s: PublicTenant["services"][number]) => ({ id: s.id, name: s.name, durationMin: s.durationMin, price: s.price }))}
         initialServiceId={booking.serviceId}
       />
     </main>
