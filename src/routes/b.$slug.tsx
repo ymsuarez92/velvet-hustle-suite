@@ -22,17 +22,28 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/b/$slug")({
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     const t = (loaderData as { tenant?: PublicTenant } | undefined)?.tenant;
     const title = t ? `${t.name} — Premium Grooming${t.city ? `, ${t.city}` : ""}` : "Maison House";
     const desc = t?.tagline ?? "A premium grooming experience.";
+    const path = `/b/${params.slug}`;
     return {
       meta: [
         { title },
         { name: "description", content: desc },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
+        { property: "og:url", content: path },
+        { property: "og:type", content: "website" },
+        { property: "og:locale", content: "en_US" },
+        { property: "og:locale:alternate", content: "es_ES" },
         ...(t ? [{ property: "og:image", content: t.hero.image } as const] : []),
+      ],
+      links: [
+        { rel: "canonical", href: path },
+        { rel: "alternate", hrefLang: "en", href: `${path}?lang=en` },
+        { rel: "alternate", hrefLang: "es", href: `${path}?lang=es` },
+        { rel: "alternate", hrefLang: "x-default", href: path },
       ],
     };
   },
