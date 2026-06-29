@@ -19,6 +19,15 @@ import {
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
+function buildTenantPublicUrl(slug: string): string {
+  if (typeof window === "undefined") return `/b/${slug}`;
+  const { protocol, host } = window.location;
+  // Preview hosts: id-preview--<id>.lovable.app  →  rewrite to published host project--<id>.lovable.app
+  const previewMatch = host.match(/^id-preview--([a-z0-9-]+)\.lovable\.app$/i);
+  const base = previewMatch ? `https://project--${previewMatch[1]}.lovable.app` : `${protocol}//${host}`;
+  return `${base}/b/${slug}`;
+}
+
 export const Route = createFileRoute("/_authenticated/admin")({
   component: SuperAdmin,
 });
@@ -619,7 +628,15 @@ function TenantsSection() {
                 <td className="px-5 py-4"><StatusPill status={t.status} /></td>
                 <td className="px-5 py-4 text-right">
                   <div className="inline-flex flex-wrap justify-end gap-1.5">
-                    <Link to="/b/$slug" params={{ slug: t.slug }} target="_blank" rel="noreferrer" className="rounded-full border border-[color:var(--bronze)] px-3 py-1 text-xs text-[color:var(--bronze)] hover:bg-[color:var(--bronze)] hover:text-white transition">Ver sitio ↗</Link>
+                    <a
+                      href={buildTenantPublicUrl(t.slug)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={buildTenantPublicUrl(t.slug)}
+                      className="rounded-full border border-[color:var(--bronze)] px-3 py-1 text-xs text-[color:var(--bronze)] hover:bg-[color:var(--bronze)] hover:text-white transition"
+                    >
+                      Ver sitio ↗
+                    </a>
                     <Link to="/b/$slug/admin" params={{ slug: t.slug }} className="rounded-full border px-3 py-1 text-xs">Admin</Link>
                     <button onClick={() => setEdit(t)} className="rounded-full border px-3 py-1 text-xs">Edit</button>
                     <button onClick={() => {
