@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -304,7 +304,7 @@ function AgendaView({ slug }: { slug: string }) {
     onSuccess: () => q.refetch(),
   });
 
-  const grouped = useMemo(() => {
+  const grouped = useMemo<[string, AppointmentRow[]][]>(() => {
     const map = new Map<string, AppointmentRow[]>();
     for (const a of q.data ?? []) {
       const k = a.startsAt.slice(0, 10);
@@ -330,13 +330,13 @@ function AgendaView({ slug }: { slug: string }) {
       {q.isLoading && <p>Loading…</p>}
       {q.data && q.data.length === 0 && <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground">No appointments scheduled.</div>}
 
-      {grouped.map(([day, list]) => (
+      {grouped.map(([day, list]: [string, AppointmentRow[]]) => (
         <section key={day} className="rounded-2xl border bg-card overflow-hidden">
           <header className="border-b bg-secondary/50 px-6 py-3">
             <p className="font-display text-lg">{new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
           </header>
           <ul className="divide-y divide-border">
-            {list.map((a) => (
+            {list.map((a: AppointmentRow) => (
               <li key={a.id} className="grid grid-cols-[80px_1fr_auto] items-center gap-4 px-6 py-4">
                 <div>
                   <p className="font-display text-xl">{new Date(a.startsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
