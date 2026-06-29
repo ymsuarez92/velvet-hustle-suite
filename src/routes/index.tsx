@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { listPublicTenants } from "@/lib/tenants.functions";
+import { listPublicTenants, type TenantSummary } from "@/lib/tenants.functions";
 import heroImg from "@/assets/hero-barbershop.jpg";
 
 export const Route = createFileRoute("/")({
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const tenants = Route.useLoaderData();
+  const tenants = Route.useLoaderData() as TenantSummary[];
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="relative overflow-hidden">
