@@ -1,0 +1,398 @@
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  getBusinessAdminBundle,
+  updateBusinessSettings,
+  updateWebsiteContent,
+  upsertService,
+  deleteService,
+  upsertMembership,
+  deleteMembership,
+  type AdminPayload,
+  type AdminService,
+  type AdminMembership,
+} from "@/lib/business-admin.functions";
+import { supabase } from "@/integrations/supabase/client";
+
+export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
+  head: ({ params }) => ({
+    meta: [{ title: `Admin — ${params.slug}` }],
+  }),
+  errorComponent: ({ error }) => (
+    <div className="min-h-screen flex items-center justify-center bg-background p-8">
+      <div className="max-w-md text-center">
+        <p className="eyebrow text-red-700">Access error</p>
+        <h1 className="mt-3 font-display text-3xl">{error.message}</h1>
+        <Link to="/admin" className="mt-6 inline-block btn-luxury">Back to platform</Link>
+      </div>
+    </div>
+  ),
+  notFoundComponent: () => <div className="p-12">Not found</div>,
+  component: BusinessAdmin,
+});
+
+type Tab = "site" | "services" | "memberships" | "settings";
+
+function BusinessAdmin() {
+  const { slug } = Route.useParams();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const fetchBundle = useServerFn(getBusinessAdminBundle);
+
+  const q = useQuery({
+    queryKey: ["admin", "bundle", slug],
+    queryFn: () => fetchBundle({ data: { slug } }),
+  });
+
+  const [tab, setTab] = useState<Tab>("site");
+
+  async function signOut() {
+    await qc.cancelQueries();
+    qc.clear();
+    await supabase.auth.signOut();
+    router.navigate({ to: "/auth", replace: true });
+  }
+
+  if (q.isLoading) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
+  if (q.error) throw q.error;
+  const bundle = q.data as AdminPayload;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <div className="container-luxury flex items-center justify-between py-5">
+          <div className="flex items-center gap-4">
+            <Link to="/admin" className="text-xs uppercase tracking-[0.18em] text-muted-foreground">← Platform</Link>
+            <div>
+              <p className="eyebrow">{bundle.business.city ?? ""}</p>
+              <h1 className="font-display text-2xl">{bundle.business.name}</h1>
+            </div>
+            <span className={`ml-3 rounded-full px-3 py-1 text-xs ${
+              bundle.business.status === "published" ? "bg-emerald-100 text-emerald-800"
+              : bundle.business.status === "suspended" ? "bg-red-100 text-red-800"
+              : "bg-amber-100 text-amber-800"}`}>{bundle.business.status}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link to="/b/$slug" params={{ slug }} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">View site →</Link>
+            <button onClick={signOut} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
+          </div>
+        </div>
+        <nav className="container-luxury flex gap-1 pb-3">
+          {(["site","services","memberships","settings"] as Tab[]).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] ${tab === t ? "bg-[color:var(--bronze)] text-white" : "text-muted-foreground hover:text-foreground"}`}>
+              {t === "site" ? "Website" : t === "services" ? "Services" : t === "memberships" ? "Memberships" : "Settings"}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <main className="container-luxury py-10">
+        {tab === "site" && <SiteEditor bundle={bundle} onSaved={() => q.refetch()} />}
+        {tab === "services" && <ServicesEditor bundle={bundle} onSaved={() => q.refetch()} />}
+        {tab === "memberships" && <MembershipsEditor bundle={bundle} onSaved={() => q.refetch()} />}
+        {tab === "settings" && <SettingsEditor bundle={bundle} onSaved={() => q.refetch()} />}
+      </main>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, type = "text" }:
+  { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  return (
+    <label className="block">
+      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm outline-none focus:border-[color:var(--bronze)]" />
+    </label>
+  );
+}
+
+function TextArea({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
+  return (
+    <label className="block">
+      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+      <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)}
+        className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm outline-none focus:border-[color:var(--bronze)]" />
+    </label>
+  );
+}
+
+/* -------------------- SITE -------------------- */
+function SiteEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => void }) {
+  const save = useServerFn(updateWebsiteContent);
+  const [form, setForm] = useState({
+    hero_eyebrow: bundle.content.heroEyebrow ?? "",
+    hero_title: bundle.content.heroTitle ?? "",
+    hero_subtitle: bundle.content.heroSubtitle ?? "",
+    hero_image_url: bundle.content.heroImageUrl ?? "",
+    about_title: bundle.content.aboutTitle ?? "",
+    about_body: bundle.content.aboutBody ?? "",
+    gallery: bundle.content.gallery.join("\n"),
+  });
+  const m = useMutation({
+    mutationFn: () => save({ data: { businessId: bundle.business.id, patch: {
+      hero_eyebrow: form.hero_eyebrow || null,
+      hero_title: form.hero_title || null,
+      hero_subtitle: form.hero_subtitle || null,
+      hero_image_url: form.hero_image_url || null,
+      about_title: form.about_title || null,
+      about_body: form.about_body || null,
+      gallery: form.gallery.split("\n").map((s) => s.trim()).filter(Boolean),
+    } } }),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-2xl border bg-card p-8">
+        <h2 className="font-display text-2xl">Hero</h2>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <Field label="Eyebrow" value={form.hero_eyebrow} onChange={(v) => setForm({ ...form, hero_eyebrow: v })} placeholder="Private grooming house" />
+          <Field label="Hero image URL" value={form.hero_image_url} onChange={(v) => setForm({ ...form, hero_image_url: v })} placeholder="https://…" />
+          <div className="md:col-span-2"><Field label="Title" value={form.hero_title} onChange={(v) => setForm({ ...form, hero_title: v })} placeholder="Premium grooming experience" /></div>
+          <div className="md:col-span-2"><TextArea label="Subtitle" value={form.hero_subtitle} onChange={(v) => setForm({ ...form, hero_subtitle: v })} /></div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-8">
+        <h2 className="font-display text-2xl">About</h2>
+        <div className="mt-6 grid gap-4">
+          <Field label="About title" value={form.about_title} onChange={(v) => setForm({ ...form, about_title: v })} />
+          <TextArea label="About body" value={form.about_body} onChange={(v) => setForm({ ...form, about_body: v })} rows={5} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-8">
+        <h2 className="font-display text-2xl">Gallery</h2>
+        <p className="mt-1 text-sm text-muted-foreground">One image URL per line.</p>
+        <TextArea label="Gallery URLs" value={form.gallery} onChange={(v) => setForm({ ...form, gallery: v })} rows={6} />
+      </section>
+
+      <div className="flex items-center justify-end gap-3">
+        {m.error && <p className="text-sm text-red-600">{(m.error as Error).message}</p>}
+        {m.isSuccess && <p className="text-sm text-emerald-700">Saved ✓</p>}
+        <button onClick={() => m.mutate()} disabled={m.isPending} className="btn-luxury">
+          {m.isPending ? "Saving…" : "Save website"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- SERVICES -------------------- */
+function ServicesEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => void }) {
+  const save = useServerFn(upsertService);
+  const del = useServerFn(deleteService);
+  const [edit, setEdit] = useState<Partial<AdminService> | null>(null);
+
+  const saveMut = useMutation({
+    mutationFn: (s: Partial<AdminService>) => save({ data: { businessId: bundle.business.id, service: {
+      id: s.id, name: s.name!, description: s.description ?? null, category: s.category ?? null,
+      duration_min: s.durationMin ?? 30, price: s.price ?? 0, image_url: s.imageUrl ?? null,
+      is_active: s.isActive ?? true, sort_order: s.sortOrder ?? 0,
+    } } }),
+    onSuccess: () => { setEdit(null); onSaved(); },
+  });
+  const delMut = useMutation({
+    mutationFn: (id: string) => del({ data: { businessId: bundle.business.id, id } }),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-3xl">Services</h2>
+        <button onClick={() => setEdit({ name: "", durationMin: 30, price: 0, isActive: true, sortOrder: bundle.services.length })} className="btn-luxury">+ New service</button>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <tr><th className="px-6 py-4">Name</th><th className="px-6 py-4">Duration</th><th className="px-6 py-4">Price</th><th className="px-6 py-4">Active</th><th className="px-6 py-4 text-right">Actions</th></tr>
+          </thead>
+          <tbody>
+            {bundle.services.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No services yet.</td></tr>}
+            {bundle.services.map((s) => (
+              <tr key={s.id} className="border-t">
+                <td className="px-6 py-4 font-medium">{s.name}</td>
+                <td className="px-6 py-4">{s.durationMin} min</td>
+                <td className="px-6 py-4">${s.price.toFixed(2)}</td>
+                <td className="px-6 py-4">{s.isActive ? "Yes" : "No"}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="inline-flex gap-2">
+                    <button onClick={() => setEdit(s)} className="rounded-full border px-3 py-1 text-xs">Edit</button>
+                    <button onClick={() => { if (confirm("Delete?")) delMut.mutate(s.id); }} className="rounded-full border border-red-300 text-red-700 px-3 py-1 text-xs">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {edit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4" onClick={() => setEdit(null)}>
+          <div className="w-full max-w-2xl rounded-2xl border bg-card p-8" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-2xl">{edit.id ? "Edit service" : "New service"}</h3>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2"><Field label="Name" value={edit.name ?? ""} onChange={(v) => setEdit({ ...edit, name: v })} /></div>
+              <Field label="Category" value={edit.category ?? ""} onChange={(v) => setEdit({ ...edit, category: v })} />
+              <Field label="Image URL" value={edit.imageUrl ?? ""} onChange={(v) => setEdit({ ...edit, imageUrl: v })} />
+              <Field label="Duration (min)" type="number" value={String(edit.durationMin ?? 30)} onChange={(v) => setEdit({ ...edit, durationMin: Number(v) })} />
+              <Field label="Price" type="number" value={String(edit.price ?? 0)} onChange={(v) => setEdit({ ...edit, price: Number(v) })} />
+              <div className="md:col-span-2"><TextArea label="Description" value={edit.description ?? ""} onChange={(v) => setEdit({ ...edit, description: v })} /></div>
+              <label className="flex items-center gap-2 md:col-span-2 text-sm">
+                <input type="checkbox" checked={edit.isActive ?? true} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />
+                Active (visible on website)
+              </label>
+            </div>
+            <div className="mt-8 flex justify-end gap-3">
+              {saveMut.error && <p className="text-sm text-red-600">{(saveMut.error as Error).message}</p>}
+              <button onClick={() => setEdit(null)} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Cancel</button>
+              <button onClick={() => saveMut.mutate(edit)} disabled={saveMut.isPending || !edit.name} className="btn-luxury">
+                {saveMut.isPending ? "Saving…" : "Save service"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- MEMBERSHIPS -------------------- */
+function MembershipsEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => void }) {
+  const save = useServerFn(upsertMembership);
+  const del = useServerFn(deleteMembership);
+  const [edit, setEdit] = useState<(Partial<AdminMembership> & { benefitsText?: string }) | null>(null);
+
+  const saveMut = useMutation({
+    mutationFn: (m: Partial<AdminMembership> & { benefitsText?: string }) => save({ data: { businessId: bundle.business.id, membership: {
+      id: m.id, name: m.name!, price: m.price ?? 0, included_cuts: m.includedCuts ?? null,
+      benefits: (m.benefitsText ?? "").split("\n").map((s) => s.trim()).filter(Boolean),
+      badge: m.badge ?? null, highlighted: m.highlighted ?? false,
+      is_active: m.isActive ?? true, sort_order: m.sortOrder ?? 0,
+    } } }),
+    onSuccess: () => { setEdit(null); onSaved(); },
+  });
+  const delMut = useMutation({
+    mutationFn: (id: string) => del({ data: { businessId: bundle.business.id, id } }),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-3xl">Memberships</h2>
+        <button onClick={() => setEdit({ name: "", price: 0, isActive: true, sortOrder: bundle.memberships.length, benefitsText: "" })} className="btn-luxury">+ New tier</button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {bundle.memberships.length === 0 && <p className="text-muted-foreground">No memberships yet.</p>}
+        {bundle.memberships.map((m) => (
+          <div key={m.id} className={`rounded-2xl border bg-card p-6 ${m.highlighted ? "ring-2 ring-[color:var(--bronze)]" : ""}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                {m.badge && <p className="eyebrow">{m.badge}</p>}
+                <h3 className="font-display text-2xl">{m.name}</h3>
+              </div>
+              <span className="font-display text-2xl">${m.price.toFixed(0)}</span>
+            </div>
+            <ul className="mt-4 space-y-1 text-sm text-muted-foreground">
+              {m.benefits.map((b, i) => <li key={i}>• {b}</li>)}
+            </ul>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setEdit({ ...m, benefitsText: m.benefits.join("\n") })} className="rounded-full border px-3 py-1 text-xs">Edit</button>
+              <button onClick={() => { if (confirm("Delete?")) delMut.mutate(m.id); }} className="rounded-full border border-red-300 text-red-700 px-3 py-1 text-xs">Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {edit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4" onClick={() => setEdit(null)}>
+          <div className="w-full max-w-2xl rounded-2xl border bg-card p-8" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-2xl">{edit.id ? "Edit membership" : "New membership"}</h3>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <Field label="Name" value={edit.name ?? ""} onChange={(v) => setEdit({ ...edit, name: v })} />
+              <Field label="Badge" value={edit.badge ?? ""} onChange={(v) => setEdit({ ...edit, badge: v })} placeholder="Most popular" />
+              <Field label="Monthly price" type="number" value={String(edit.price ?? 0)} onChange={(v) => setEdit({ ...edit, price: Number(v) })} />
+              <Field label="Included cuts" type="number" value={String(edit.includedCuts ?? 0)} onChange={(v) => setEdit({ ...edit, includedCuts: Number(v) })} />
+              <div className="md:col-span-2"><TextArea label="Benefits (one per line)" rows={6} value={edit.benefitsText ?? ""} onChange={(v) => setEdit({ ...edit, benefitsText: v })} /></div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={edit.highlighted ?? false} onChange={(e) => setEdit({ ...edit, highlighted: e.target.checked })} /> Highlighted
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={edit.isActive ?? true} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} /> Active
+              </label>
+            </div>
+            <div className="mt-8 flex justify-end gap-3">
+              {saveMut.error && <p className="text-sm text-red-600">{(saveMut.error as Error).message}</p>}
+              <button onClick={() => setEdit(null)} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Cancel</button>
+              <button onClick={() => saveMut.mutate(edit)} disabled={saveMut.isPending || !edit.name} className="btn-luxury">
+                {saveMut.isPending ? "Saving…" : "Save tier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- SETTINGS -------------------- */
+function SettingsEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => void }) {
+  const save = useServerFn(updateBusinessSettings);
+  const [form, setForm] = useState({
+    name: bundle.business.name,
+    tagline: bundle.business.tagline ?? "",
+    city: bundle.business.city ?? "",
+    address: bundle.business.address ?? "",
+    phone: bundle.business.phone ?? "",
+    whatsapp: bundle.business.whatsapp ?? "",
+    email: bundle.business.email ?? "",
+    instagram: bundle.business.instagram ?? "",
+    logo_url: bundle.business.logoUrl ?? "",
+    primary_color: bundle.business.primaryColor ?? "",
+    accent_color: bundle.business.accentColor ?? "",
+  });
+  const m = useMutation({
+    mutationFn: () => save({ data: { businessId: bundle.business.id, patch: {
+      name: form.name, tagline: form.tagline || null, city: form.city || null,
+      address: form.address || null, phone: form.phone || null, whatsapp: form.whatsapp || null,
+      email: form.email || null, instagram: form.instagram || null,
+      logo_url: form.logo_url || null, primary_color: form.primary_color || null,
+      accent_color: form.accent_color || null,
+    } } }),
+    onSuccess: onSaved,
+  });
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-display text-3xl">Business settings</h2>
+      <section className="rounded-2xl border bg-card p-8 grid gap-4 md:grid-cols-2">
+        <Field label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+        <Field label="Tagline" value={form.tagline} onChange={(v) => setForm({ ...form, tagline: v })} />
+        <Field label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })} />
+        <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+        <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+        <Field label="WhatsApp" value={form.whatsapp} onChange={(v) => setForm({ ...form, whatsapp: v })} placeholder="+1..." />
+        <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
+        <Field label="Instagram" value={form.instagram} onChange={(v) => setForm({ ...form, instagram: v })} />
+        <Field label="Logo URL" value={form.logo_url} onChange={(v) => setForm({ ...form, logo_url: v })} />
+        <Field label="Primary color" value={form.primary_color} onChange={(v) => setForm({ ...form, primary_color: v })} placeholder="#B0844A" />
+        <Field label="Accent color" value={form.accent_color} onChange={(v) => setForm({ ...form, accent_color: v })} placeholder="#EFE6D6" />
+      </section>
+      <div className="flex items-center justify-end gap-3">
+        {m.error && <p className="text-sm text-red-600">{(m.error as Error).message}</p>}
+        {m.isSuccess && <p className="text-sm text-emerald-700">Saved ✓</p>}
+        <button onClick={() => m.mutate()} disabled={m.isPending} className="btn-luxury">
+          {m.isPending ? "Saving…" : "Save settings"}
+        </button>
+      </div>
+    </div>
+  );
+}
