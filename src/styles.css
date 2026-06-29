@@ -253,6 +253,11 @@
   background: linear-gradient(90deg, transparent, var(--champagne), transparent);
 }
 
+/* Offset for sticky navbar so anchor links don't hide content under it */
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
