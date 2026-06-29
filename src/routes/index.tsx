@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyAccess } from "@/lib/access.functions";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -13,7 +14,14 @@ export const Route = createFileRoute("/")({
   }),
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
-    if (data.user) throw redirect({ to: "/admin" });
+    if (data.user) {
+      const access = await getMyAccess().catch(() => null);
+      if (access?.isSuperAdmin) throw redirect({ to: "/admin" });
+      if (access && access.businessSlugs.length > 0) {
+        throw redirect({ to: "/b/$slug/admin", params: { slug: access.businessSlugs[0] } });
+      }
+      throw redirect({ to: "/forbidden" });
+    }
   },
   component: LoginPage,
 });
@@ -30,9 +38,15 @@ function LoginPage() {
     setError(null);
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setLoading(false); setError(error.message); return; }
+    const access = await getMyAccess().catch(() => null);
     setLoading(false);
-    if (error) { setError(error.message); return; }
-    navigate({ to: "/admin" });
+    if (access?.isSuperAdmin) { navigate({ to: "/admin" }); return; }
+    if (access && access.businessSlugs.length > 0) {
+      navigate({ to: "/b/$slug/admin", params: { slug: access.businessSlugs[0] } });
+      return;
+    }
+    navigate({ to: "/forbidden" });
   }
 
   return (

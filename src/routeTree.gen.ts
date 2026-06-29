@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +17,11 @@ import { Route as BSlugRouteImport } from './routes/b.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedBSlugAdminRouteImport } from './routes/_authenticated/b.$slug.admin'
 
+const ForbiddenRoute = ForbiddenRouteImport.update({
+  id: '/forbidden',
+  path: '/forbidden',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -49,6 +55,7 @@ const AuthenticatedBSlugAdminRoute = AuthenticatedBSlugAdminRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/forbidden': typeof ForbiddenRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/b/$slug': typeof BSlugRoute
   '/b/$slug/admin': typeof AuthenticatedBSlugAdminRoute
@@ -56,6 +63,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/forbidden': typeof ForbiddenRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/b/$slug': typeof BSlugRoute
   '/b/$slug/admin': typeof AuthenticatedBSlugAdminRoute
@@ -65,20 +73,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/forbidden': typeof ForbiddenRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/b/$slug': typeof BSlugRoute
   '/_authenticated/b/$slug/admin': typeof AuthenticatedBSlugAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/admin' | '/b/$slug' | '/b/$slug/admin'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/forbidden'
+    | '/admin'
+    | '/b/$slug'
+    | '/b/$slug/admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/admin' | '/b/$slug' | '/b/$slug/admin'
+  to: '/' | '/auth' | '/forbidden' | '/admin' | '/b/$slug' | '/b/$slug/admin'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/forbidden'
     | '/_authenticated/admin'
     | '/b/$slug'
     | '/_authenticated/b/$slug/admin'
@@ -88,11 +104,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ForbiddenRoute: typeof ForbiddenRoute
   BSlugRoute: typeof BSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/forbidden': {
+      id: '/forbidden'
+      path: '/forbidden'
+      fullPath: '/forbidden'
+      preLoaderRoute: typeof ForbiddenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -155,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ForbiddenRoute: ForbiddenRoute,
   BSlugRoute: BSlugRoute,
 }
 export const routeTree = rootRouteImport
