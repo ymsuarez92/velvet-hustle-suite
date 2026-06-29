@@ -196,6 +196,10 @@ export type PlatformStats = {
     appointmentsPrev30d: number;
   };
   topTenants: Array<{ id: string; name: string; slug: string; mrr: number; members: number }>;
+  revenueByMonth: Array<{ label: string; value: number }>;
+  planDistribution: Array<{ plan: string; count: number }>;
+  expiringSubscriptions: Array<{ id: string; businessName: string; tier: string; daysLeft: number }>;
+  recentActivity: Array<{ id: string; action: string; businessName: string | null; createdAt: string; amount?: number | null }>;
 };
 
 export const getPlatformStats = createServerFn({ method: "GET" })
@@ -208,9 +212,9 @@ export const getPlatformStats = createServerFn({ method: "GET" })
     const d60 = new Date(now - 60 * 86400_000).toISOString();
 
     const [biz, subs, memb, cust, appt, appt30, appt60] = await Promise.all([
-      supabaseAdmin.from("businesses").select("id, name, slug, status, created_at"),
-      supabaseAdmin.from("subscriptions").select("business_id, membership_id, status"),
-      supabaseAdmin.from("memberships").select("id, price"),
+      supabaseAdmin.from("businesses").select("id, name, slug, status, subscription_plan, created_at"),
+      supabaseAdmin.from("subscriptions").select("business_id, membership_id, status, started_at, ends_at"),
+      supabaseAdmin.from("memberships").select("id, price, tier, name"),
       supabaseAdmin.from("customers").select("id, created_at"),
       supabaseAdmin.from("appointments").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("appointments").select("id, created_at").gte("created_at", d30),
@@ -219,7 +223,9 @@ export const getPlatformStats = createServerFn({ method: "GET" })
 
     const businesses = biz.data ?? [];
     const memPrice = new Map<string, number>();
+    const memTier = new Map<string, string>();
     for (const m of (memb.data ?? []) as any[]) memPrice.set(m.id as string, Number(m.price) || 0);
+    for (const m of (memb.data ?? []) as any[]) memTier.set(m.id as string, (m.tier as string) ?? (m.name as string) ?? "Plan");
 
     const activeSubs = (subs.data ?? []).filter((s) => s.status === "active");
     const mrr = activeSubs.reduce((acc, s) => acc + (memPrice.get(s.membership_id as string) ?? 0), 0);
@@ -235,6 +241,63 @@ export const getPlatformStats = createServerFn({ method: "GET" })
       .map((b) => ({ id: b.id, name: b.name, slug: b.slug, mrr: perTenantMrr.get(b.id)?.mrr ?? 0, members: perTenantMrr.get(b.id)?.members ?? 0 }))
       .sort((a, b) => b.mrr - a.mrr)
       .slice(0, 5);
+
+    // Revenue by month (last 6 months) — sum of price for subs active during that month
+    const months: Array<{ label: string; value: number; start: Date; end: Date }> = [];
+    const fmt = new Intl.DateTimeFormat("es-ES", { month: "short" });
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const start = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const end = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
+      months.push({ label: fmt.format(start).replace(".", ""), value: 0, start, end });
+    }
+    for (const s of (subs.data ?? []) as any[]) {
+      const started = s.started_at ? new Date(s.started_at) : null;
+      const ended = s.ends_at ? new Date(s.ends_at) : null;
+      const price = memPrice.get(s.membership_id as string) ?? 0;
+      if (!started) continue;
+      for (const m of months) {
+        if (started < m.end && (!ended || ended >= m.start)) m.value += price;
+      }
+    }
+    const revenueByMonth = months.map((m) => ({ label: m.label, value: m.value }));
+
+    // Plan distribution
+    const planMap = new Map<string, number>();
+    for (const b of businesses) {
+      const p = (b as any).subscription_plan ?? "starter";
+      planMap.set(p, (planMap.get(p) ?? 0) + 1);
+    }
+    const planDistribution = Array.from(planMap.entries()).map(([plan, count]) => ({ plan, count }));
+
+    // Expiring subscriptions (next 14 days)
+    const bizName = new Map<string, string>();
+    for (const b of businesses) bizName.set(b.id as string, b.name as string);
+    const nowMs = Date.now();
+    const horizon = nowMs + 14 * 86400_000;
+    const expiringSubscriptions = ((subs.data ?? []) as any[])
+      .filter((s) => s.status === "active" && s.ends_at && new Date(s.ends_at).getTime() <= horizon && new Date(s.ends_at).getTime() >= nowMs)
+      .map((s) => ({
+        id: s.business_id as string,
+        businessName: bizName.get(s.business_id as string) ?? "—",
+        tier: memTier.get(s.membership_id as string) ?? "Plan",
+        daysLeft: Math.max(0, Math.ceil((new Date(s.ends_at).getTime() - nowMs) / 86400_000)),
+      }))
+      .slice(0, 5);
+
+    // Recent activity from audit_logs
+    const { data: logs } = await supabaseAdmin
+      .from("audit_logs")
+      .select("id, action, business_id, created_at, metadata")
+      .order("created_at", { ascending: false })
+      .limit(6);
+    const recentActivity = (logs ?? []).map((l: any) => ({
+      id: l.id as string,
+      action: l.action as string,
+      businessName: l.business_id ? bizName.get(l.business_id as string) ?? null : null,
+      createdAt: l.created_at as string,
+      amount: null,
+    }));
 
     return {
       totals: {
@@ -253,6 +316,10 @@ export const getPlatformStats = createServerFn({ method: "GET" })
         appointmentsPrev30d: (appt60.data ?? []).length,
       },
       topTenants,
+      revenueByMonth,
+      planDistribution,
+      expiringSubscriptions,
+      recentActivity,
     };
   });
 
