@@ -10,9 +10,11 @@ import {
   deleteService,
   upsertMembership,
   deleteMembership,
+  getOwnerOverview,
   type AdminPayload,
   type AdminService,
   type AdminMembership,
+  type OwnerOverview,
 } from "@/lib/business-admin.functions";
 import {
   getSchedule, updateBusinessHours, addBlockedDate, removeBlockedDate,
@@ -45,7 +47,17 @@ export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
   component: BusinessAdmin,
 });
 
-type Tab = "site" | "services" | "memberships" | "schedule" | "agenda" | "settings";
+type Tab = "overview" | "site" | "services" | "memberships" | "schedule" | "agenda" | "settings";
+
+const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
+  { id: "overview",    label: "Resumen",     icon: "◆", desc: "KPIs y próximas citas" },
+  { id: "agenda",      label: "Agenda",      icon: "▦", desc: "Citas confirmadas" },
+  { id: "schedule",    label: "Horarios",    icon: "◷", desc: "Disponibilidad" },
+  { id: "services",    label: "Servicios",   icon: "✂", desc: "Catálogo y precios" },
+  { id: "memberships", label: "Membresías",  icon: "◈", desc: "Planes activos" },
+  { id: "site",        label: "Sitio web",   icon: "❖", desc: "Contenido público" },
+  { id: "settings",    label: "Ajustes",     icon: "⚙", desc: "Datos del negocio" },
+];
 
 function BusinessAdmin() {
   const { slug } = Route.useParams();
@@ -58,7 +70,7 @@ function BusinessAdmin() {
     queryFn: () => fetchBundle({ data: { slug } }),
   });
 
-  const [tab, setTab] = useState<Tab>("site");
+  const [tab, setTab] = useState<Tab>("overview");
 
   async function signOut() {
     await qc.cancelQueries();
@@ -91,17 +103,18 @@ function BusinessAdmin() {
             <button onClick={signOut} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
           </div>
         </div>
-        <nav className="container-luxury flex flex-wrap gap-1 pb-3">
-          {(["site","services","memberships","schedule","agenda","settings"] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] ${tab === t ? "bg-[color:var(--bronze)] text-white" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "site" ? "Website" : t === "services" ? "Services" : t === "memberships" ? "Memberships" : t === "schedule" ? "Schedule" : t === "agenda" ? "Agenda" : "Settings"}
+        <nav className="container-luxury -mx-2 flex gap-1 overflow-x-auto px-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition ${tab === t.id ? "bg-[color:var(--bronze)] text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}>
+              <span aria-hidden className="text-sm">{t.icon}</span>{t.label}
             </button>
           ))}
         </nav>
       </header>
 
       <main className="container-luxury py-10">
+        {tab === "overview" && <OverviewPanel slug={slug} bundle={bundle} onJump={setTab} />}
         {tab === "site" && <SiteEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "services" && <ServicesEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "memberships" && <MembershipsEditor bundle={bundle} onSaved={() => q.refetch()} />}
