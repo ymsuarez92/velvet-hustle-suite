@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter, redirect } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -20,8 +20,15 @@ import {
   type ScheduleBundle, type AppointmentRow,
 } from "@/lib/booking.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyAccess } from "@/lib/access.functions";
 
 export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
+  beforeLoad: async ({ params }) => {
+    const access = await getMyAccess();
+    const allowed = access.isSuperAdmin || access.businessSlugs.includes(params.slug);
+    if (!allowed) throw redirect({ to: "/forbidden" });
+    return { access };
+  },
   head: ({ params }) => ({
     meta: [{ title: `Admin — ${params.slug}` }],
   }),
