@@ -17,7 +17,7 @@ import {
 
 export const Route = createFileRoute("/b/$slug")({
   head: ({ loaderData }) => {
-    const t = loaderData?.tenant;
+    const t = (loaderData as { tenant?: PublicTenant } | undefined)?.tenant;
     const title = t ? `${t.name} — Premium Grooming${t.city ? `, ${t.city}` : ""}` : "Maison House";
     const desc = t?.tagline ?? "A premium grooming experience.";
     return {
