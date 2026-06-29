@@ -38,7 +38,7 @@ async function logAudit(opts: {
   metadata?: Record<string, unknown>;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.from("audit_logs").insert({
+  await (supabaseAdmin.from("audit_logs") as any).insert({
     actor_user_id: opts.actorUserId,
     actor_email: opts.actorEmail ?? null,
     business_id: opts.businessId ?? null,
@@ -68,11 +68,11 @@ export const listAllTenants = createServerFn({ method: "GET" })
       supabaseAdmin.from("subscriptions").select("business_id, status, membership_id").in("business_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]),
       supabaseAdmin.from("customers").select("business_id").in("business_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]),
       supabaseAdmin.from("appointments").select("business_id, created_at").in("business_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]).gte("created_at", since),
-      supabaseAdmin.from("memberships").select("id, business_id, monthly_price").in("business_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]),
+      supabaseAdmin.from("memberships").select("id, business_id, price").in("business_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]),
     ]);
 
     const membPrice = new Map<string, number>();
-    for (const m of membRes.data ?? []) membPrice.set(m.id as string, Number(m.monthly_price) || 0);
+    for (const m of (membRes.data ?? []) as any[]) membPrice.set(m.id as string, Number(m.price) || 0);
 
     function tally(bid: string) {
       const subs = (subsRes.data ?? []).filter((s) => s.business_id === bid && s.status === "active");
@@ -131,7 +131,7 @@ export const updateTenant = createServerFn({ method: "POST" })
     if (data.city !== undefined) patch.city = data.city;
     if (data.tagline !== undefined) patch.tagline = data.tagline;
     if (data.plan !== undefined) patch.subscription_plan = data.plan;
-    const { error } = await supabaseAdmin.from("businesses").update(patch).eq("id", data.id);
+    const { error } = await (supabaseAdmin.from("businesses") as any).update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     await logAudit({ actorUserId: context.userId, businessId: data.id, action: "tenant.update", entity: "business", entityId: data.id, metadata: patch });
     return { ok: true };
@@ -148,7 +148,7 @@ export const setTenantStatus = createServerFn({ method: "POST" })
     if (data.status !== "suspended") patch.suspended_at = null;
     const { error } = await supabaseAdmin
       .from("businesses")
-      .update(patch)
+      .update(patch as any)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     await logAudit({ actorUserId: context.userId, businessId: data.id, action: `tenant.${data.status}`, entity: "business", entityId: data.id });
@@ -210,7 +210,7 @@ export const getPlatformStats = createServerFn({ method: "GET" })
     const [biz, subs, memb, cust, appt, appt30, appt60] = await Promise.all([
       supabaseAdmin.from("businesses").select("id, name, slug, status, created_at"),
       supabaseAdmin.from("subscriptions").select("business_id, membership_id, status"),
-      supabaseAdmin.from("memberships").select("id, monthly_price"),
+      supabaseAdmin.from("memberships").select("id, price"),
       supabaseAdmin.from("customers").select("id, created_at"),
       supabaseAdmin.from("appointments").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("appointments").select("id, created_at").gte("created_at", d30),
@@ -219,7 +219,7 @@ export const getPlatformStats = createServerFn({ method: "GET" })
 
     const businesses = biz.data ?? [];
     const memPrice = new Map<string, number>();
-    for (const m of memb.data ?? []) memPrice.set(m.id as string, Number(m.monthly_price) || 0);
+    for (const m of (memb.data ?? []) as any[]) memPrice.set(m.id as string, Number(m.price) || 0);
 
     const activeSubs = (subs.data ?? []).filter((s) => s.status === "active");
     const mrr = activeSubs.reduce((acc, s) => acc + (memPrice.get(s.membership_id as string) ?? 0), 0);
@@ -374,7 +374,7 @@ export const upsertServiceTemplate = createServerFn({ method: "POST" })
       image_url: data.imageUrl ?? null, is_active: data.isActive ?? true,
     };
     if (data.id) row.id = data.id;
-    const { error } = await supabaseAdmin.from("service_templates").upsert(row);
+    const { error } = await (supabaseAdmin.from("service_templates") as any).upsert(row);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -415,7 +415,7 @@ export const upsertMembershipTemplate = createServerFn({ method: "POST" })
       benefits: data.benefits ?? [], is_active: data.isActive ?? true,
     };
     if (data.id) row.id = data.id;
-    const { error } = await supabaseAdmin.from("membership_templates").upsert(row);
+    const { error } = await (supabaseAdmin.from("membership_templates") as any).upsert(row);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -441,22 +441,22 @@ export const applyTemplatesToTenant = createServerFn({ method: "POST" })
     if (data.serviceTemplateIds?.length) {
       const { data: tpl } = await supabaseAdmin.from("service_templates").select("*").in("id", data.serviceTemplateIds);
       const rows = (tpl ?? []).map((t) => ({
-        business_id: data.businessId, title: t.title, description: t.description, category: t.category,
+        business_id: data.businessId, name: t.title, description: t.description, category: t.category,
         duration_min: t.duration_min, price: t.suggested_price, image_url: t.image_url, is_active: true,
       }));
       if (rows.length) {
-        const { error } = await supabaseAdmin.from("services").insert(rows);
+        const { error } = await (supabaseAdmin.from("services") as any).insert(rows);
         if (error) throw new Error(error.message);
       }
     }
     if (data.membershipTemplateIds?.length) {
       const { data: tpl } = await supabaseAdmin.from("membership_templates").select("*").in("id", data.membershipTemplateIds);
       const rows = (tpl ?? []).map((t) => ({
-        business_id: data.businessId, tier: t.tier, name: t.name, description: t.description, badge: t.badge,
-        monthly_price: t.monthly_price, included_cuts: t.included_cuts, benefits: t.benefits, is_active: true,
+        business_id: data.businessId, name: t.name, description: t.description, badge: t.badge,
+        price: t.monthly_price, included_cuts: t.included_cuts, benefits: t.benefits, is_active: true,
       }));
       if (rows.length) {
-        const { error } = await supabaseAdmin.from("memberships").insert(rows);
+        const { error } = await (supabaseAdmin.from("memberships") as any).insert(rows);
         if (error) throw new Error(error.message);
       }
     }
@@ -468,7 +468,7 @@ export const applyTemplatesToTenant = createServerFn({ method: "POST" })
 
 export type AuditLogRow = {
   id: string; createdAt: string; actorEmail: string | null; businessId: string | null;
-  businessName: string | null; action: string; entity: string | null; entityId: string | null; metadata: Record<string, unknown>;
+  businessName: string | null; action: string; entity: string | null; entityId: string | null; metadata: unknown;
 };
 
 export const listAuditLogs = createServerFn({ method: "GET" })
@@ -505,6 +505,6 @@ export const listAuditLogs = createServerFn({ method: "GET" })
       action: r.action,
       entity: r.entity,
       entityId: r.entity_id,
-      metadata: (r.metadata ?? {}) as Record<string, unknown>,
+      metadata: (r.metadata ?? {}) as unknown,
     }));
   });
