@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BSlugRouteImport } from './routes/b.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedBSlugAdminRouteImport } from './routes/_authenticated/b.$slug.admin'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,18 +40,25 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBSlugAdminRoute = AuthenticatedBSlugAdminRouteImport.update({
+  id: '/b/$slug/admin',
+  path: '/b/$slug/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/b/$slug': typeof BSlugRoute
+  '/b/$slug/admin': typeof AuthenticatedBSlugAdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/b/$slug': typeof BSlugRoute
+  '/b/$slug/admin': typeof AuthenticatedBSlugAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +67,13 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/b/$slug': typeof BSlugRoute
+  '/_authenticated/b/$slug/admin': typeof AuthenticatedBSlugAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/admin' | '/b/$slug'
+  fullPaths: '/' | '/auth' | '/admin' | '/b/$slug' | '/b/$slug/admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/admin' | '/b/$slug'
+  to: '/' | '/auth' | '/admin' | '/b/$slug' | '/b/$slug/admin'
   id:
     | '__root__'
     | '/'
@@ -72,6 +81,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/b/$slug'
+    | '/_authenticated/b/$slug/admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,15 +128,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/b/$slug/admin': {
+      id: '/_authenticated/b/$slug/admin'
+      path: '/b/$slug/admin'
+      fullPath: '/b/$slug/admin'
+      preLoaderRoute: typeof AuthenticatedBSlugAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedBSlugAdminRoute: typeof AuthenticatedBSlugAdminRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedBSlugAdminRoute: AuthenticatedBSlugAdminRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

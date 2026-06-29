@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listAllTenants, createTenant, setTenantStatus } from "@/lib/admin.functions";
+import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -15,6 +16,7 @@ function SuperAdmin() {
   const list = useServerFn(listAllTenants);
   const create = useServerFn(createTenant);
   const setStatus = useServerFn(setTenantStatus);
+  const assign = useServerFn(assignBusinessOwner);
 
   const { data: tenants = [], isLoading } = useQuery({
     queryKey: ["admin", "tenants"],
@@ -31,6 +33,10 @@ function SuperAdmin() {
     mutationFn: (input: { id: string; status: "draft" | "published" | "suspended" }) =>
       setStatus({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "tenants"] }),
+  });
+
+  const assignMut = useMutation({
+    mutationFn: (input: { businessId: string; email: string }) => assign({ data: input }),
   });
 
   const [form, setForm] = useState({ slug: "", name: "", city: "", tagline: "" });
@@ -125,6 +131,11 @@ function SuperAdmin() {
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex gap-2">
                         <Link to="/b/$slug" params={{ slug: t.slug }} className="rounded-full border px-3 py-1 text-xs">View</Link>
+                        <Link to="/b/$slug/admin" params={{ slug: t.slug }} className="rounded-full border px-3 py-1 text-xs">Admin</Link>
+                        <button onClick={() => {
+                          const email = prompt(`Assign business admin for "${t.name}" — user's email (they must sign up first):`);
+                          if (email) assignMut.mutate({ businessId: t.id, email });
+                        }} className="rounded-full border px-3 py-1 text-xs">Owner</button>
                         {t.status !== "published" ? (
                           <button onClick={() => statusMut.mutate({ id: t.id, status: "published" })}
                             className="rounded-full bg-[color:var(--bronze)] px-3 py-1 text-xs text-white">Publish</button>
