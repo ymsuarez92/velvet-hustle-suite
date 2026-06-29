@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Store, Users2, CreditCard, Receipt, Ticket, Bell, Settings,
   BarChart3, TrendingUp, Crown, Calendar, UserCircle2, FileText, Library, Folder, ScrollText,
   Search, HelpCircle, Plus, Building2, UserPlus, FilePlus2, PenSquare, ArrowUpRight,
-  Store as StoreIcon, DollarSign,
+  Store as StoreIcon, DollarSign, Menu, X,
 } from "lucide-react";
 import {
   listAllTenants, createTenant, updateTenant, setTenantStatus, deleteTenant,
@@ -66,6 +66,7 @@ function SuperAdmin() {
   const qc = useQueryClient();
   const [section, setSection] = useState<Section>("overview");
   const [activeKey, setActiveKey] = useState<string>("Dashboard");
+  const [mobileNav, setMobileNav] = useState(false);
 
   async function signOut() {
     await qc.cancelQueries();
@@ -76,16 +77,36 @@ function SuperAdmin() {
 
   return (
     <div className="min-h-screen bg-[#f7f5f0] flex text-[#1c1c20]">
+      {/* Mobile nav backdrop */}
+      {mobileNav && (
+        <button
+          aria-label="Cerrar menú"
+          onClick={() => setMobileNav(false)}
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden animate-fade-in"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col bg-[#161618] text-neutral-300">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-[#161618] text-neutral-300 transform transition-transform duration-300 ease-out lg:static lg:translate-x-0 lg:w-64 ${
+          mobileNav ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
         <div className="px-6 py-6 border-b border-white/5 flex items-center gap-3">
           <div className="h-10 w-10 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center">
             <Crown className="h-5 w-5 text-[#161618]" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="font-display text-[15px] tracking-[0.18em] text-white leading-none">ELITE BARBER</p>
             <p className="text-[10px] tracking-[0.45em] text-[#d4a85a] mt-1">CLUB</p>
           </div>
+          <button
+            onClick={() => setMobileNav(false)}
+            className="lg:hidden h-8 w-8 grid place-items-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5 transition"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-5">
           {NAV_GROUPS.map((g, gi) => (
@@ -97,13 +118,16 @@ function SuperAdmin() {
                   return (
                     <li key={it.label}>
                       <button
-                        onClick={() => { setActiveKey(it.label); setSection(it.id); }}
-                        className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
-                          active ? "bg-[#d4a85a]/15 text-[#d4a85a]" : "text-neutral-400 hover:text-white hover:bg-white/5"
+                        onClick={() => { setActiveKey(it.label); setSection(it.id); setMobileNav(false); }}
+                        className={`group w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 ${
+                          active
+                            ? "bg-[#d4a85a]/15 text-[#d4a85a] shadow-[inset_2px_0_0_0_#d4a85a]"
+                            : "text-neutral-400 hover:text-white hover:bg-white/5 hover:translate-x-0.5"
                         }`}
                       >
-                        <it.Icon className="h-4 w-4" />
+                        <it.Icon className={`h-4 w-4 transition-transform duration-200 ${active ? "" : "group-hover:scale-110"}`} />
                         <span className="truncate">{it.label}</span>
+                        {it.soon && <span className="ml-auto text-[9px] tracking-widest text-neutral-600 group-hover:text-neutral-400 transition-colors">SOON</span>}
                       </button>
                     </li>
                   );
@@ -113,7 +137,7 @@ function SuperAdmin() {
           ))}
         </nav>
         <div className="border-t border-white/5 p-3">
-          <div className="flex items-center gap-3 rounded-md px-2 py-2">
+          <div className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-white/5 transition-colors">
             <div className="h-9 w-9 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center">
               <Crown className="h-4 w-4 text-[#161618]" />
             </div>
@@ -121,7 +145,7 @@ function SuperAdmin() {
               <p className="text-sm text-white truncate">Elite Barber Club</p>
               <p className="text-[11px] text-neutral-500">Super Admin</p>
             </div>
-            <button onClick={signOut} title="Sign out" className="text-neutral-500 hover:text-white text-xs">⋮</button>
+            <button onClick={signOut} title="Cerrar sesión" className="text-neutral-500 hover:text-white text-xs transition-colors">⋮</button>
           </div>
         </div>
       </aside>
@@ -129,40 +153,42 @@ function SuperAdmin() {
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="bg-white/80 backdrop-blur border-b border-black/5 px-6 lg:px-10 py-4 flex items-center gap-4">
-          <div className="lg:hidden">
-            <select value={activeKey} onChange={(e) => {
-              const found = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.label === e.target.value);
-              if (found) { setActiveKey(found.label); setSection(found.id); }
-            }} className="rounded-md border bg-white px-3 py-2 text-sm">
-              {NAV_GROUPS.flatMap((g) => g.items).map((i) => <option key={i.label}>{i.label}</option>)}
-            </select>
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-black/5 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 flex items-center gap-3 sm:gap-4">
+          <button
+            onClick={() => setMobileNav(true)}
+            className="lg:hidden h-9 w-9 grid place-items-center rounded-md border border-black/5 bg-white hover:bg-black/5 transition"
+            aria-label="Abrir menú"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1 lg:flex-none">
+            <h1 className="font-display text-lg sm:text-2xl leading-tight truncate">{activeKey}</h1>
+            <p className="text-[11px] sm:text-xs text-neutral-500 hidden sm:block">Resumen general de la plataforma</p>
           </div>
-          <div className="hidden md:block">
-            <h1 className="font-display text-2xl leading-tight">{activeKey}</h1>
-            <p className="text-xs text-neutral-500">Resumen general de la plataforma</p>
-          </div>
-          <div className="flex-1" />
-          <div className="hidden md:flex items-center gap-2 rounded-lg border bg-white px-3 py-2 w-[320px]">
+          <div className="hidden lg:block flex-1" />
+          <div className="hidden md:flex items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 w-[260px] xl:w-[320px] focus-within:ring-2 focus-within:ring-[#d4a85a]/30 focus-within:border-[#d4a85a]/40 transition-all">
             <Search className="h-4 w-4 text-neutral-400" />
-            <input placeholder="Buscar negocios, usuarios, etc..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400" />
+            <input placeholder="Buscar negocios, usuarios..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400" />
             <kbd className="text-[10px] text-neutral-400 border rounded px-1.5 py-0.5">⌘K</kbd>
           </div>
-          <button className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5">
-            <Bell className="h-4 w-4 text-neutral-600" />
-            <span className="absolute -top-0.5 -right-0.5 bg-[#d4a85a] text-[10px] text-white rounded-full h-4 w-4 grid place-items-center">3</span>
+          <button className="md:hidden h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 transition" aria-label="Buscar">
+            <Search className="h-4 w-4 text-neutral-600" />
           </button>
-          <button className="h-9 w-9 grid place-items-center rounded-full hover:bg-black/5"><HelpCircle className="h-4 w-4 text-neutral-600" /></button>
-          <div className="flex items-center gap-2 pl-3 border-l">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-sm font-medium">SA</div>
-            <div className="text-right hidden md:block">
+          <button className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 transition active:scale-95">
+            <Bell className="h-4 w-4 text-neutral-600" />
+            <span className="absolute -top-0.5 -right-0.5 bg-[#d4a85a] text-[10px] text-white rounded-full h-4 w-4 grid place-items-center animate-pulse">3</span>
+          </button>
+          <button className="hidden sm:grid h-9 w-9 place-items-center rounded-full hover:bg-black/5 transition"><HelpCircle className="h-4 w-4 text-neutral-600" /></button>
+          <div className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-sm font-medium ring-2 ring-white shadow-sm">SA</div>
+            <div className="text-right hidden xl:block">
               <p className="text-sm font-medium leading-tight">Super Admin</p>
               <p className="text-[11px] text-neutral-500">superadmin@elite.com</p>
             </div>
           </div>
         </header>
 
-        <main className="px-6 lg:px-10 py-6 lg:py-8 flex-1">
+        <main className="px-4 sm:px-6 lg:px-10 py-5 sm:py-6 lg:py-8 flex-1 animate-fade-in">
           {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : "Dashboard"); }} />}
           {section === "tenants" && <TenantsSection />}
           {section === "users" && <UsersSection />}
@@ -170,7 +196,7 @@ function SuperAdmin() {
           {section === "audit" && <AuditSection />}
         </main>
 
-        <footer className="px-6 lg:px-10 py-4 text-[11px] text-neutral-500 flex items-center justify-between border-t border-black/5 bg-white/40">
+        <footer className="px-4 sm:px-6 lg:px-10 py-4 text-[11px] text-neutral-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 border-t border-black/5 bg-white/40">
           <p>© {new Date().getFullYear()} Elite Barber Club. Todos los derechos reservados.</p>
           <p>Versión 1.0.0</p>
         </footer>
@@ -185,7 +211,7 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
   const stats = useServerFn(getPlatformStats);
   const q = useQuery({ queryKey: ["plat-stats"], queryFn: () => stats() });
 
-  if (q.isLoading) return <p className="text-neutral-500">Cargando métricas de la plataforma…</p>;
+  if (q.isLoading) return <OverviewSkeleton />;
   if (q.error) return <p className="text-red-600">{(q.error as Error).message}</p>;
   const d = q.data!;
   const growth = d.growth.appointmentsPrev30d === 0
@@ -199,13 +225,13 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
     <div className="space-y-6">
       {/* CTA bar */}
       <div className="flex justify-end">
-        <button onClick={() => onJump("tenants")} className="inline-flex items-center gap-2 rounded-md bg-[#d4a85a] hover:bg-[#c1974b] text-white px-4 py-2.5 text-sm font-medium shadow-sm">
+        <button onClick={() => onJump("tenants")} className="inline-flex items-center gap-2 rounded-md bg-[#d4a85a] hover:bg-[#c1974b] text-white px-4 py-2.5 text-sm font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
           <Plus className="h-4 w-4" /> Crear Nuevo Negocio
         </button>
       </div>
 
       {/* KPI row */}
-      <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+      <section className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Kpi icon={<StoreIcon className="h-5 w-5" />} label="Total Negocios" value={d.totals.businesses} delta={`+${d.growth.newBusinesses30d}`} sub="Negocios activos en la plataforma" />
         <Kpi icon={<Users2 className="h-5 w-5" />} label="Usuarios Activos" value={d.totals.customers} delta={`+${d.growth.newCustomers30d}`} sub="Administradores y empleados" />
         <Kpi icon={<Crown className="h-5 w-5" />} label="Membresías Activas" value={d.totals.members.toLocaleString()} delta={`+${Math.round((d.totals.members / Math.max(d.totals.customers, 1)) * 100)}%`} sub="Suscripciones activas" />
@@ -215,7 +241,7 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
 
       {/* Charts + Activity */}
       <section className="grid gap-4 lg:grid-cols-12">
-        <Card className="lg:col-span-5">
+        <Card className="lg:col-span-5" hover>
           <div className="flex items-start justify-between">
             <div>
               <h2 className="font-medium text-base">Ingresos Recurrentes</h2>
@@ -224,16 +250,16 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
                 <span className="text-emerald-600 text-xs pb-1.5">↑ 24.5% vs período anterior</span>
               </div>
             </div>
-            <button className="text-xs text-neutral-500 border rounded-md px-3 py-1.5">Últimos 6 meses ▾</button>
+            <button className="text-xs text-neutral-500 border rounded-md px-3 py-1.5 hover:bg-black/5 transition">Últimos 6 meses ▾</button>
           </div>
           <div className="mt-4">
             <LineChart data={d.revenueByMonth} />
           </div>
         </Card>
 
-        <Card className="lg:col-span-4">
+        <Card className="lg:col-span-4" hover>
           <h2 className="font-medium text-base">Distribución de Planes</h2>
-          <div className="mt-4 flex items-center gap-6">
+          <div className="mt-4 flex flex-col sm:flex-row items-center gap-6">
             <Donut data={d.planDistribution.map((p) => ({ label: planLabels[p.plan] ?? p.plan, value: p.count, color: planColors[p.plan] ?? "#999" }))} />
             <ul className="space-y-3 text-sm flex-1">
               {d.planDistribution.length === 0 && <li className="text-neutral-500 text-xs">Sin datos</li>}
@@ -252,13 +278,13 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
           </div>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3" hover>
           <h2 className="font-medium text-base">Actividad Reciente</h2>
           <ul className="mt-4 space-y-3.5">
             {d.recentActivity.length === 0 && <li className="text-xs text-neutral-500">Sin actividad reciente.</li>}
-            {d.recentActivity.map((a) => (
-              <li key={a.id} className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-full bg-[#d4a85a]/15 text-[#8a6a2e] grid place-items-center flex-shrink-0">
+            {d.recentActivity.map((a, idx) => (
+              <li key={a.id} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${idx * 40}ms`, animationFillMode: "backwards" }}>
+                <div className="h-8 w-8 rounded-full bg-[#d4a85a]/15 text-[#8a6a2e] grid place-items-center flex-shrink-0 transition-transform hover:scale-110">
                   <Building2 className="h-3.5 w-3.5" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -269,27 +295,27 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
               </li>
             ))}
           </ul>
-          <button onClick={() => onJump("audit")} className="mt-4 text-xs text-[#8a6a2e] hover:text-[#d4a85a] inline-flex items-center gap-1">
-            Ver toda la actividad <ArrowUpRight className="h-3 w-3" />
+          <button onClick={() => onJump("audit")} className="mt-4 text-xs text-[#8a6a2e] hover:text-[#d4a85a] inline-flex items-center gap-1 group transition-colors">
+            Ver toda la actividad <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </button>
         </Card>
       </section>
 
       {/* Recent businesses + side widgets */}
       <section className="grid gap-4 lg:grid-cols-12">
-        <Card className="lg:col-span-9">
+        <Card className="lg:col-span-9" hover>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="font-medium text-base">Negocios Recientes</h2>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-1.5 text-xs">
+              <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-1.5 text-xs focus-within:ring-2 focus-within:ring-[#d4a85a]/30 focus-within:border-[#d4a85a]/40 transition-all">
                 <Search className="h-3.5 w-3.5 text-neutral-400" />
-                <input placeholder="Buscar negocio..." className="bg-transparent outline-none w-40" />
+                <input placeholder="Buscar negocio..." className="bg-transparent outline-none w-32 sm:w-40" />
               </div>
-              <button onClick={() => onJump("tenants")} className="rounded-md bg-[#d4a85a] hover:bg-[#c1974b] text-white text-xs px-3 py-1.5">Ver Todos</button>
+              <button onClick={() => onJump("tenants")} className="rounded-md bg-[#d4a85a] hover:bg-[#c1974b] text-white text-xs px-3 py-1.5 transition-all hover:shadow-md active:scale-95">Ver Todos</button>
             </div>
           </div>
           <div className="mt-4 -mx-2 overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[560px]">
               <thead className="text-[11px] uppercase tracking-wider text-neutral-500">
                 <tr className="text-left">
                   <th className="px-2 py-2 font-medium">Negocio</th>
@@ -302,13 +328,13 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
               <tbody>
                 {d.topTenants.length === 0 && <tr><td colSpan={5} className="px-2 py-8 text-center text-neutral-500 text-sm">Aún no hay negocios.</td></tr>}
                 {d.topTenants.map((t) => (
-                  <tr key={t.id} className="border-t">
+                  <tr key={t.id} className="border-t hover:bg-[#faf7f0] transition-colors">
                     <td className="px-2 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-xs">
+                        <div className="h-9 w-9 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-xs shadow-sm">
                           <Crown className="h-4 w-4" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium leading-tight">{t.name}</p>
                           <p className="text-[11px] text-neutral-500">{t.slug}.com</p>
                         </div>
@@ -326,12 +352,12 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
         </Card>
 
         <div className="lg:col-span-3 space-y-4">
-          <Card>
+          <Card hover>
             <h2 className="font-medium text-base">Suscripciones por Vencer</h2>
             <ul className="mt-4 space-y-3">
               {d.expiringSubscriptions.length === 0 && <li className="text-xs text-neutral-500">Ninguna próxima a vencer.</li>}
               {d.expiringSubscriptions.map((s, i) => (
-                <li key={i} className="flex items-center justify-between gap-2">
+                <li key={i} className="flex items-center justify-between gap-2 hover:translate-x-0.5 transition-transform">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{s.businessName}</p>
                     <p className="text-[11px] text-neutral-500">Renovación en {s.daysLeft} días</p>
@@ -340,12 +366,12 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
                 </li>
               ))}
             </ul>
-            <button onClick={() => onJump("tenants")} className="mt-4 text-xs text-[#8a6a2e] hover:text-[#d4a85a] inline-flex items-center gap-1">
-              Ver todas las suscripciones <ArrowUpRight className="h-3 w-3" />
+            <button onClick={() => onJump("tenants")} className="mt-4 text-xs text-[#8a6a2e] hover:text-[#d4a85a] inline-flex items-center gap-1 group transition-colors">
+              Ver todas las suscripciones <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </button>
           </Card>
 
-          <Card>
+          <Card hover>
             <h2 className="font-medium text-base">Acciones Rápidas</h2>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <QuickAction icon={<Building2 className="h-4 w-4" />} label="Crear Negocio" onClick={() => onJump("tenants")} />
@@ -360,20 +386,21 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
   );
 }
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl bg-white border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-5 ${className}`}>{children}</div>;
+function Card({ children, className = "", hover = false }: { children: React.ReactNode; className?: string; hover?: boolean }) {
+  const hoverCls = hover ? "transition-all duration-300 hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.15)] hover:border-black/10 hover:-translate-y-0.5" : "";
+  return <div className={`rounded-xl bg-white border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-5 ${hoverCls} ${className}`}>{children}</div>;
 }
 
 function Kpi({ icon, label, value, delta, sub }: { icon: React.ReactNode; label: string; value: React.ReactNode; delta?: string; sub?: string }) {
   const positive = delta?.startsWith("+");
   return (
-    <Card>
+    <Card className="group cursor-default" hover>
       <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-full bg-[#f4ecd8] text-[#8a6a2e] grid place-items-center flex-shrink-0">{icon}</div>
-        <div className="min-w-0">
+        <div className="h-11 w-11 rounded-full bg-[#f4ecd8] text-[#8a6a2e] grid place-items-center flex-shrink-0 transition-all duration-300 group-hover:bg-[#d4a85a] group-hover:text-white group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-md">{icon}</div>
+        <div className="min-w-0 flex-1">
           <p className="text-[12px] text-neutral-500">{label}</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <p className="font-display text-2xl leading-none">{value}</p>
+            <p className="font-display text-2xl leading-none tracking-tight">{value}</p>
             {delta && <span className={`text-[11px] ${positive ? "text-emerald-600" : "text-neutral-500"}`}>↑ {delta.replace("+", "")}</span>}
           </div>
           {sub && <p className="text-[11px] text-neutral-500 mt-2 leading-tight">{sub}</p>}
@@ -400,10 +427,51 @@ function PlanBadge({ plan }: { plan: string }) {
 
 function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="rounded-lg border border-black/5 bg-[#fafaf7] hover:bg-white hover:border-[#d4a85a]/40 transition p-3 text-left">
-      <div className="h-8 w-8 rounded-md bg-white border grid place-items-center text-neutral-600">{icon}</div>
+    <button onClick={onClick} className="group rounded-lg border border-black/5 bg-[#fafaf7] hover:bg-white hover:border-[#d4a85a]/40 hover:shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 p-3 text-left">
+      <div className="h-8 w-8 rounded-md bg-white border grid place-items-center text-neutral-600 group-hover:text-[#8a6a2e] group-hover:border-[#d4a85a]/40 transition-colors">{icon}</div>
       <p className="mt-2 text-xs font-medium">{label}</p>
     </button>
+  );
+}
+
+/* ============== SKELETONS ============== */
+
+function SkeletonBlock({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-gradient-to-r from-neutral-200/70 via-neutral-100 to-neutral-200/70 bg-[length:200%_100%] ${className}`} />;
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-end"><SkeletonBlock className="h-10 w-44" /></div>
+      <section className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="rounded-xl bg-white border border-black/5 p-5">
+            <div className="flex items-start gap-3">
+              <SkeletonBlock className="h-11 w-11 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <SkeletonBlock className="h-3 w-20" />
+                <SkeletonBlock className="h-6 w-16" />
+                <SkeletonBlock className="h-2 w-full" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </section>
+      <section className="grid gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5 rounded-xl bg-white border border-black/5 p-5 space-y-4">
+          <SkeletonBlock className="h-4 w-40" /><SkeletonBlock className="h-8 w-32" /><SkeletonBlock className="h-[200px] w-full" />
+        </div>
+        <div className="lg:col-span-4 rounded-xl bg-white border border-black/5 p-5 space-y-4">
+          <SkeletonBlock className="h-4 w-40" />
+          <div className="flex items-center gap-6"><SkeletonBlock className="h-40 w-40 rounded-full" /><div className="flex-1 space-y-2"><SkeletonBlock className="h-3 w-full" /><SkeletonBlock className="h-3 w-3/4" /><SkeletonBlock className="h-3 w-2/3" /></div></div>
+        </div>
+        <div className="lg:col-span-3 rounded-xl bg-white border border-black/5 p-5 space-y-3">
+          <SkeletonBlock className="h-4 w-40" />
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonBlock key={i} className="h-10 w-full" />)}
+        </div>
+      </section>
+    </div>
   );
 }
 
