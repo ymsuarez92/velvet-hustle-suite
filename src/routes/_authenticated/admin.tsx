@@ -11,10 +11,11 @@ import {
 import {
   listAllTenants, createTenant, updateTenant, setTenantStatus, deleteTenant,
   getPlatformStats, listPlatformUsers, createPlatformUser, resetUserPassword, deletePlatformUser,
+  setUserRoles,
   listServiceTemplates, upsertServiceTemplate, deleteServiceTemplate,
   listMembershipTemplates, upsertMembershipTemplate, deleteMembershipTemplate,
   applyTemplatesToTenant, listAuditLogs,
-  type AdminTenant, type ServiceTemplate, type MembershipTemplate,
+  type AdminTenant, type ServiceTemplate, type MembershipTemplate, type PlatformUser,
 } from "@/lib/admin.functions";
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -817,6 +818,7 @@ function UsersSection() {
   const create = useServerFn(createPlatformUser);
   const reset = useServerFn(resetUserPassword);
   const del = useServerFn(deletePlatformUser);
+  const setRoles = useServerFn(setUserRoles);
 
   const usersQ = useQuery({ queryKey: ["plat-users"], queryFn: () => list() });
   const tenantsQ = useQuery({ queryKey: ["admin", "tenants"], queryFn: () => tenants() });
@@ -824,53 +826,85 @@ function UsersSection() {
   const createMut = useMutation({ mutationFn: (i: any) => create({ data: i }), onSuccess: () => qc.invalidateQueries({ queryKey: ["plat-users"] }) });
   const resetMut = useMutation({ mutationFn: (i: { userId: string; password: string }) => reset({ data: i }) });
   const delMut = useMutation({ mutationFn: (id: string) => del({ data: { userId: id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["plat-users"] }) });
+  const rolesMut = useMutation({ mutationFn: (i: any) => setRoles({ data: i }), onSuccess: () => qc.invalidateQueries({ queryKey: ["plat-users"] }) });
 
   const [showCreate, setShowCreate] = useState(false);
+  const [editUser, setEditUser] = useState<PlatformUser | null>(null);
+  const [roleFilter, setRoleFilter] = useState<"all" | "super_admin" | "business_admin" | "staff" | "none">("all");
+  const [q, setQ] = useState("");
+
+  const tenantsList = tenantsQ.data ?? [];
+  const filtered = (usersQ.data ?? []).filter((u) => {
+    if (q && !(u.email ?? "").toLowerCase().includes(q.toLowerCase())) return false;
+    if (roleFilter === "all") return true;
+    if (roleFilter === "none") return u.roles.length === 0;
+    return u.roles.some((r) => r.role === roleFilter);
+  });
+
+  const roleLabel = (r: string) =>
+    r === "super_admin" ? "Super admin" : r === "business_admin" ? "Owner" : r === "staff" ? "Staff" : r;
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <header className="flex items-end justify-between flex-wrap gap-4">
-        <div>
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
           <p className="eyebrow">Users</p>
-          <h1 className="font-display text-4xl mt-2">Accounts & roles</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Create tenant owners, reset credentials, manage platform admins.</p>
+          <h1 className="font-display text-3xl sm:text-4xl mt-2 truncate">Cuentas y roles</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Crea dueños de tenant, asigna negocios y gestiona admins de plataforma.</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-luxury">+ New user</button>
+        <button onClick={() => setShowCreate(true)} className="btn-luxury shrink-0 whitespace-nowrap">+ Nuevo usuario</button>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por email…"
+          className="flex-1 min-w-[180px] rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-[color:var(--bronze)]"
+        />
+        {(["all", "super_admin", "business_admin", "staff", "none"] as const).map((k) => (
+          <Chip key={k} active={roleFilter === k} onClick={() => setRoleFilter(k)}>
+            {k === "all" ? "Todos" : k === "none" ? "Sin rol" : roleLabel(k)}
+          </Chip>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-hidden rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
               <th className="px-5 py-4">Email</th>
-              <th className="px-5 py-4">Roles</th>
-              <th className="px-5 py-4">Last sign-in</th>
-              <th className="px-5 py-4 text-right">Actions</th>
+              <th className="px-5 py-4">Roles & tenants</th>
+              <th className="px-5 py-4">Último acceso</th>
+              <th className="px-5 py-4 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {usersQ.isLoading && <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">Loading…</td></tr>}
-            {usersQ.data?.map((u) => (
+            {usersQ.isLoading && <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">Cargando…</td></tr>}
+            {!usersQ.isLoading && filtered.length === 0 && <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">Sin resultados.</td></tr>}
+            {filtered.map((u) => (
               <tr key={u.id} className="border-t">
                 <td className="px-5 py-4 font-medium">{u.email}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-1.5">
-                    {u.roles.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                    {u.roles.length === 0 && <span className="text-xs text-muted-foreground">Sin rol</span>}
                     {u.roles.map((r, i) => (
                       <span key={i} className={`rounded-full px-2.5 py-1 text-xs ${r.role === "super_admin" ? "bg-[color:var(--bronze)] text-white" : "bg-muted"}`}>
-                        {r.role}{r.business_name ? ` · ${r.business_name}` : ""}
+                        {roleLabel(r.role)}{r.business_name ? ` · ${r.business_name}` : ""}
                       </span>
                     ))}
                   </div>
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">{u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString() : "—"}</td>
                 <td className="px-5 py-4 text-right">
-                  <div className="inline-flex gap-1.5">
+                  <div className="inline-flex flex-wrap justify-end gap-1.5">
+                    <button onClick={() => setEditUser(u)} className="rounded-full border px-3 py-1 text-xs hover:border-[color:var(--bronze)]">Editar roles</button>
                     <button onClick={() => {
-                      const p = prompt(`Set new password for ${u.email} (min 8 chars):`);
+                      const p = prompt(`Nueva contraseña para ${u.email} (mín. 8):`);
                       if (p && p.length >= 8) resetMut.mutate({ userId: u.id, password: p });
-                    }} className="rounded-full border px-3 py-1 text-xs">Reset password</button>
-                    <button onClick={() => { if (confirm(`Delete user ${u.email}?`)) delMut.mutate(u.id); }} className="rounded-full border border-red-300 px-3 py-1 text-xs text-red-700">Delete</button>
+                    }} className="rounded-full border px-3 py-1 text-xs">Reset</button>
+                    <button onClick={() => { if (confirm(`¿Eliminar usuario ${u.email}?`)) delMut.mutate(u.id); }} className="rounded-full border border-red-300 px-3 py-1 text-xs text-red-700">Eliminar</button>
                   </div>
                 </td>
               </tr>
@@ -878,15 +912,64 @@ function UsersSection() {
           </tbody>
         </table>
       </div>
-      {resetMut.isSuccess && <p className="text-sm text-emerald-700">Password updated ✓</p>}
-      {(createMut.error || resetMut.error || delMut.error) && <p className="text-sm text-red-600">{((createMut.error || resetMut.error || delMut.error) as Error).message}</p>}
+
+      {/* Mobile cards */}
+      <div className="grid gap-3 md:hidden">
+        {usersQ.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+        {!usersQ.isLoading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Sin resultados.</p>}
+        {filtered.map((u) => (
+          <div key={u.id} className="rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{u.email}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {u.lastSignInAt ? `Último acceso ${new Date(u.lastSignInAt).toLocaleDateString()}` : "Sin acceso aún"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {u.roles.length === 0 && <span className="text-xs text-muted-foreground">Sin rol</span>}
+              {u.roles.map((r, i) => (
+                <span key={i} className={`rounded-full px-2.5 py-1 text-xs ${r.role === "super_admin" ? "bg-[color:var(--bronze)] text-white" : "bg-muted"}`}>
+                  {roleLabel(r.role)}{r.business_name ? ` · ${r.business_name}` : ""}
+                </span>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <button onClick={() => setEditUser(u)} className="rounded-full border px-3 py-1.5 text-xs hover:border-[color:var(--bronze)]">Editar roles</button>
+              <button onClick={() => {
+                const p = prompt(`Nueva contraseña para ${u.email} (mín. 8):`);
+                if (p && p.length >= 8) resetMut.mutate({ userId: u.id, password: p });
+              }} className="rounded-full border px-3 py-1.5 text-xs">Reset</button>
+              <button onClick={() => { if (confirm(`¿Eliminar usuario ${u.email}?`)) delMut.mutate(u.id); }} className="rounded-full border border-red-300 px-3 py-1.5 text-xs text-red-700">Eliminar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {resetMut.isSuccess && <p className="text-sm text-emerald-700">Contraseña actualizada ✓</p>}
+      {rolesMut.isSuccess && <p className="text-sm text-emerald-700">Roles actualizados ✓</p>}
+      {(createMut.error || resetMut.error || delMut.error || rolesMut.error) && <p className="text-sm text-red-600">{((createMut.error || resetMut.error || delMut.error || rolesMut.error) as Error).message}</p>}
 
       {showCreate && (
         <CreateUserModal
-          tenants={tenantsQ.data ?? []}
+          tenants={tenantsList}
           submitting={createMut.isPending}
           onClose={() => setShowCreate(false)}
           onSubmit={async (f) => { await createMut.mutateAsync(f); setShowCreate(false); }}
+        />
+      )}
+
+      {editUser && (
+        <EditUserRolesModal
+          user={editUser}
+          tenants={tenantsList}
+          submitting={rolesMut.isPending}
+          onClose={() => setEditUser(null)}
+          onSubmit={async (roles) => {
+            await rolesMut.mutateAsync({ userId: editUser.id, roles });
+            setEditUser(null);
+          }}
         />
       )}
     </div>
@@ -928,6 +1011,90 @@ function CreateUserModal({ tenants, submitting, onClose, onSubmit }: {
           <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm">Cancel</button>
           <button disabled={!f.email || f.password.length < 8 || submitting} onClick={() => onSubmit({ email: f.email, password: f.password, role: f.role, businessId: f.role === "super_admin" ? null : f.businessId })} className="btn-luxury">
             {submitting ? "Creating…" : "Create user"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+type RoleAssignment = { role: "super_admin" | "business_admin" | "staff"; businessId?: string | null };
+
+function EditUserRolesModal({
+  user,
+  tenants,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  user: PlatformUser;
+  tenants: AdminTenant[];
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (roles: RoleAssignment[]) => Promise<void>;
+}) {
+  const [isSuper, setIsSuper] = useState(user.roles.some((r) => r.role === "super_admin"));
+  const [assignments, setAssignments] = useState<RoleAssignment[]>(
+    user.roles
+      .filter((r) => r.role !== "super_admin")
+      .map((r) => ({ role: r.role as "business_admin" | "staff", businessId: r.business_id })),
+  );
+
+  const addAssignment = () => {
+    if (!tenants[0]) return;
+    setAssignments([...assignments, { role: "business_admin", businessId: tenants[0].id }]);
+  };
+  const updateAssignment = (i: number, patch: Partial<RoleAssignment>) => {
+    setAssignments(assignments.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  };
+  const removeAssignment = (i: number) => setAssignments(assignments.filter((_, idx) => idx !== i));
+
+  const submit = async () => {
+    const roles: RoleAssignment[] = [];
+    if (isSuper) roles.push({ role: "super_admin", businessId: null });
+    for (const a of assignments) {
+      if (a.businessId) roles.push({ role: a.role, businessId: a.businessId });
+    }
+    await onSubmit(roles);
+  };
+
+  return (
+    <Modal onClose={onClose} title={`Roles de ${user.email}`}>
+      <div className="space-y-5">
+        <label className="flex items-start gap-3 rounded-xl border p-4 cursor-pointer hover:border-[color:var(--bronze)]">
+          <input type="checkbox" checked={isSuper} onChange={(e) => setIsSuper(e.target.checked)} className="mt-1" />
+          <div>
+            <p className="font-medium text-sm">Super admin de la plataforma</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Acceso total al dashboard global y todos los tenants.</p>
+          </div>
+        </label>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tenants asignados</p>
+            <button type="button" onClick={addAssignment} disabled={!tenants.length} className="text-xs rounded-full border px-3 py-1 hover:border-[color:var(--bronze)] disabled:opacity-50">+ Añadir tenant</button>
+          </div>
+          {assignments.length === 0 && <p className="text-xs text-muted-foreground py-3">Sin tenants asignados. El usuario no podrá administrar ningún negocio.</p>}
+          <div className="space-y-2">
+            {assignments.map((a, i) => (
+              <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center rounded-xl border p-2">
+                <select value={a.businessId ?? ""} onChange={(e) => updateAssignment(i, { businessId: e.target.value })} className="rounded-md border bg-background px-3 py-2 text-sm min-w-0">
+                  {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                <select value={a.role} onChange={(e) => updateAssignment(i, { role: e.target.value as any })} className="rounded-md border bg-background px-3 py-2 text-sm">
+                  <option value="business_admin">Owner</option>
+                  <option value="staff">Staff</option>
+                </select>
+                <button type="button" onClick={() => removeAssignment(i)} className="rounded-full border border-red-300 px-2.5 py-1.5 text-xs text-red-700">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm">Cancelar</button>
+          <button onClick={submit} disabled={submitting} className="btn-luxury">
+            {submitting ? "Guardando…" : "Guardar roles"}
           </button>
         </div>
       </div>

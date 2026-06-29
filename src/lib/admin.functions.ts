@@ -405,6 +405,51 @@ export const deletePlatformUser = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setUserRoles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: {
+      userId: string;
+      roles: Array<{ role: "super_admin" | "business_admin" | "staff"; businessId?: string | null }>;
+    }) => d,
+  )
+  .handler(async ({ context, data }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Guard: never strip the last super_admin (including self).
+    if (data.userId === context.userId) {
+      const stillSuper = data.roles.some((r) => r.role === "super_admin");
+      if (!stillSuper) throw new Error("Cannot remove your own super_admin role");
+    }
+
+    const { error: delErr } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.userId);
+    if (delErr) throw new Error(delErr.message);
+
+    const rows = data.roles
+      .filter((r) => r.role === "super_admin" || r.businessId)
+      .map((r) => ({
+        user_id: data.userId,
+        role: r.role,
+        business_id: r.role === "super_admin" ? null : r.businessId ?? null,
+      }));
+    if (rows.length > 0) {
+      const { error: insErr } = await (supabaseAdmin.from("user_roles") as any).insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
+    await logAudit({
+      actorUserId: context.userId,
+      action: "user.roles_update",
+      entity: "user",
+      entityId: data.userId,
+      metadata: { roles: data.roles },
+    });
+    return { ok: true };
+  });
+
 /* -------------------- TEMPLATES -------------------- */
 
 export type ServiceTemplate = {
