@@ -147,8 +147,112 @@ const dict = {
 
 export type TKey = keyof typeof dict["en"];
 
-const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: TKey) => string }>({
-  lang: "en", setLang: () => {}, t: (k) => k,
+// Translations of canonical English strings coming from the database / seeds.
+// Used by `tx()` to localize dynamic content without touching the schema.
+const dynEs: Record<string, string> = {
+  // hero titles
+  "Premium Grooming\nExperience": "Experiencia de\nGrooming Premium",
+  "Sharp Lines\nSlow Rituals": "Líneas Marcadas\nRituales Pausados",
+  // hero subtitles
+  "A private grooming club where master barbers, considered rituals, and a serene atelier come together for the modern gentleman.":
+    "Un club privado de grooming donde maestros barberos, rituales pensados y un atelier sereno se unen para el caballero moderno.",
+  "A modern barbering atelier built around craft, conversation and the unhurried pleasure of being well-kept.":
+    "Un atelier moderno construido en torno al oficio, la conversación y el placer pausado de estar bien cuidado.",
+  // hero eyebrows / taglines
+  "Members-only grooming house": "Casa de grooming solo para miembros",
+  "Brooklyn atelier": "Atelier en Brooklyn",
+  "More than a haircut, it's a ritual.": "Más que un corte, es un ritual.",
+  "Sharp lines. Slow rituals.": "Líneas marcadas. Rituales pausados.",
+  // stats labels
+  "Of craft": "De oficio",
+  "Active members": "Miembros activos",
+  "Master barbers": "Maestros barberos",
+  "Member rating": "Valoración",
+  // pillars
+  "Master Barbers": "Maestros Barberos",
+  "Heritage Products": "Productos Heritage",
+  "Members Lounge": "Salón de Miembros",
+  "Lifetime Care": "Cuidado de por Vida",
+  "Master Fades": "Maestros del Fade",
+  "Botanical Oils": "Aceites Botánicos",
+  "Atelier Lounge": "Salón Atelier",
+  // hours
+  "Mon — Fri": "Lun — Vie",
+  "Tue — Fri": "Mar — Vie",
+  "Sat — Sun": "Sáb — Dom",
+  "Saturday": "Sábado",
+  "Sunday": "Domingo",
+  "Monday": "Lunes",
+  "Closed": "Cerrado",
+  // services
+  "Signature Haircut": "Corte Signature",
+  "Beard Sculpting": "Esculpido de Barba",
+  "Hot Towel Shave": "Afeitado con Toalla Caliente",
+  "Scalp Hydromassage": "Hidromasaje Capilar",
+  "Atelier Cut": "Corte Atelier",
+  "Beard Architecture": "Arquitectura de Barba",
+  "Straight Razor Ritual": "Ritual de Navaja",
+  "Scalp Therapy": "Terapia Capilar",
+  "A 45-minute consultation, scissor cut and finish tailored to your hair architecture.":
+    "Consulta de 45 minutos, corte con tijera y acabado a la medida de tu arquitectura capilar.",
+  "Precision line-up, hot-towel softening and conditioning oil for a defined finish.":
+    "Línea de precisión, suavizado con toalla caliente y aceite acondicionador para un acabado definido.",
+  "A traditional straight-razor ritual with apothecary balms and steamed towels.":
+    "Ritual tradicional de navaja con bálsamos artesanales y toallas calientes.",
+  "Twenty minutes of pressure-point scalp therapy with botanical infusions.":
+    "Veinte minutos de terapia de presión capilar con infusiones botánicas.",
+  "Signature consultation, scissor & clipper craft for a sharp, modern silhouette.":
+    "Consulta signature, tijera y máquina para una silueta moderna y marcada.",
+  "Razor line-up, hot-towel softening and finishing oil.":
+    "Línea con navaja, suavizado con toalla caliente y aceite de acabado.",
+  "Traditional shave with apothecary balms and steamed towels.":
+    "Afeitado tradicional con bálsamos artesanales y toallas calientes.",
+  "Pressure-point scalp ritual with botanical infusions.":
+    "Ritual de presión capilar con infusiones botánicas.",
+  // memberships
+  "Most chosen": "El más elegido",
+  "2 signature haircuts / month": "2 cortes signature / mes",
+  "Beard trim included": "Recorte de barba incluido",
+  "10% off apothecary": "10% off en productos",
+  "Priority booking window": "Ventana de reserva prioritaria",
+  "4 signature haircuts / month": "4 cortes signature / mes",
+  "Unlimited beard trims": "Recortes de barba ilimitados",
+  "15% off apothecary": "15% off en productos",
+  "Priority booking": "Reserva prioritaria",
+  "Members lounge access": "Acceso al salón de miembros",
+  "Unlimited haircuts": "Cortes ilimitados",
+  "All grooming rituals included": "Todos los rituales incluidos",
+  "20% off apothecary": "20% off en productos",
+  "Same-day booking": "Reserva el mismo día",
+  "Private suite & events": "Suite privada y eventos",
+  "2 cuts / month": "2 cortes / mes",
+  "Beard trim": "Recorte de barba",
+  "4 cuts / month": "4 cortes / mes",
+  "Atelier lounge access": "Acceso al salón atelier",
+  "Unlimited cuts": "Cortes ilimitados",
+  "All rituals included": "Todos los rituales incluidos",
+  "Private events": "Eventos privados",
+  // testimonial roles & quotes
+  "Member since 2022": "Miembro desde 2022",
+  "Member since 2023": "Miembro desde 2023",
+  "Premium member": "Miembro Premium",
+  "VIP member": "Miembro VIP",
+  "The most considered grooming experience in the city. Every visit feels like a private ritual.":
+    "La experiencia de grooming más cuidada de la ciudad. Cada visita se siente como un ritual privado.",
+  "Booking is effortless and the craft is uncompromising. I've never trusted my hair to anyone else.":
+    "Reservar es muy fácil y el oficio es impecable. Nunca había confiado mi cabello a nadie más.",
+  "The members lounge alone is worth it. The cuts and shaves are unmatched in Miami.":
+    "Solo el salón de miembros ya vale la pena. Los cortes y afeitados no tienen rival en Miami.",
+  "Calm, considered, never rushed. Best atelier in Brooklyn.":
+    "Calmado, cuidado, nunca apresurado. El mejor atelier de Brooklyn.",
+  "The line-ups are surgical. The space is a sanctuary.":
+    "Las líneas son quirúrgicas. El espacio es un santuario.",
+  "Membership pays for itself in the first two visits.":
+    "La membresía se paga sola en las primeras dos visitas.",
+};
+
+const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: TKey) => string; tx: (s: string | null | undefined) => string }>({
+  lang: "en", setLang: () => {}, t: (k) => k, tx: (s) => s ?? "",
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -180,7 +284,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem("lang", l); } catch {}
   };
   const t = (k: TKey) => (dict[lang] as Record<string, string>)[k] ?? (dict.en as Record<string, string>)[k] ?? k;
-  return <Ctx.Provider value={{ lang, setLang, t }}>{children}</Ctx.Provider>;
+  const tx = (s: string | null | undefined) => {
+    if (!s) return "";
+    if (lang === "es") return dynEs[s] ?? s;
+    return s;
+  };
+  return <Ctx.Provider value={{ lang, setLang, t, tx }}>{children}</Ctx.Provider>;
 }
 
 export function useI18n() { return useContext(Ctx); }
