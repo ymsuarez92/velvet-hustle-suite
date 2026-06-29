@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { allTenants } from "@/data/tenants";
+import { listPublicTenants } from "@/lib/tenants.functions";
 import heroImg from "@/assets/hero-barbershop.jpg";
 
 export const Route = createFileRoute("/")({
@@ -12,11 +12,22 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Multi-tenant SaaS platform powering luxury barber shops and grooming houses." },
     ],
   }),
+  loader: () => listPublicTenants(),
+  errorComponent: () => (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <h1 className="font-display text-3xl">Something went wrong</h1>
+    </div>
+  ),
+  notFoundComponent: () => (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <h1 className="font-display text-3xl">Not found</h1>
+    </div>
+  ),
   component: Index,
 });
 
 function Index() {
-  const tenants = allTenants();
+  const tenants = Route.useLoaderData();
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="relative overflow-hidden">
@@ -56,11 +67,11 @@ function Index() {
           {tenants.map((t) => (
             <Link key={t.slug} to="/b/$slug" params={{ slug: t.slug }} className="group relative block overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)] transition hover:shadow-[var(--shadow-luxury)]">
               <div className="relative aspect-[4/3] overflow-hidden">
-                <img src={t.hero.image} alt={t.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" loading="lazy" />
+                <img src={t.heroImage ?? heroImg} alt={t.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-charcoal/70 via-transparent" />
                 <div className="absolute left-6 top-6">
                   <span className="rounded-full bg-background/85 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-foreground/80">
-                    {t.city}
+                    {t.city ?? ""}
                   </span>
                 </div>
               </div>
