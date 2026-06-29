@@ -85,32 +85,60 @@ function BusinessAdmin() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container-luxury flex items-center justify-between py-5">
-          <div className="flex items-center gap-4">
-            <Link to="/admin" className="text-xs uppercase tracking-[0.18em] text-muted-foreground">← Platform</Link>
-            <div>
-              <p className="eyebrow">{bundle.business.city ?? ""}</p>
-              <h1 className="font-display text-2xl">{bundle.business.name}</h1>
+      <header className="sticky top-0 z-30 border-b bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+        <div className="container-luxury grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link to="/admin" aria-label="Platform"
+              className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm text-muted-foreground hover:bg-secondary/60">←</Link>
+            <div className="min-w-0">
+              <p className="eyebrow truncate text-[10px]">{bundle.business.city ?? "Owner panel"}</p>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="truncate font-display text-lg sm:text-2xl">{bundle.business.name}</h1>
+                <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] sm:inline ${
+                  bundle.business.status === "published" ? "bg-emerald-100 text-emerald-800"
+                  : bundle.business.status === "suspended" ? "bg-red-100 text-red-800"
+                  : "bg-amber-100 text-amber-800"}`}>{bundle.business.status}</span>
+              </div>
             </div>
-            <span className={`ml-3 rounded-full px-3 py-1 text-xs ${
-              bundle.business.status === "published" ? "bg-emerald-100 text-emerald-800"
-              : bundle.business.status === "suspended" ? "bg-red-100 text-red-800"
-              : "bg-amber-100 text-amber-800"}`}>{bundle.business.status}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Link to="/b/$slug" params={{ slug }} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">View site →</Link>
-            <button onClick={signOut} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/b/$slug" params={{ slug }}
+              className="hidden rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] hover:bg-secondary/60 md:inline-block">
+              Ver sitio ↗
+            </Link>
+            <Link to="/b/$slug" params={{ slug }} aria-label="Ver sitio"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm md:hidden">↗</Link>
+            <button onClick={signOut}
+              className="rounded-full border px-3 py-2 text-[11px] uppercase tracking-[0.18em] hover:bg-secondary/60 sm:px-4">
+              Salir
+            </button>
           </div>
         </div>
-        <nav className="container-luxury -mx-2 flex gap-1 overflow-x-auto px-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition ${tab === t.id ? "bg-[color:var(--bronze)] text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}>
-              <span aria-hidden className="text-sm">{t.icon}</span>{t.label}
-            </button>
-          ))}
-        </nav>
+        <div className="border-t bg-card/70">
+          <nav aria-label="Secciones"
+            className="container-luxury -mx-2 flex gap-1 overflow-x-auto px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {TABS.map((t) => {
+              const active = tab === t.id;
+              return (
+                <button key={t.id} onClick={() => setTab(t.id)} aria-current={active ? "page" : undefined}
+                  className={`group relative shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition ${
+                    active
+                      ? "bg-[color:var(--bronze)] text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                  }`}>
+                  <span aria-hidden className="text-sm">{t.icon}</span>
+                  <span>{t.label}</span>
+                  {active && (
+                    <span aria-hidden className="absolute -bottom-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[color:var(--bronze)]" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="container-luxury px-4 pb-2 pt-1 text-[11px] text-muted-foreground sm:hidden">
+          {TABS.find((t) => t.id === tab)?.desc}
+        </div>
       </header>
 
       <main className="container-luxury py-10">
@@ -230,20 +258,20 @@ function OverviewPanel({ slug, bundle, onJump }: { slug: string; bundle: AdminPa
         </div>
 
         <div className="rounded-2xl border bg-card p-6">
-          <h3 className="font-display text-xl">Atajos</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Acciones más usadas.</p>
-          <div className="mt-5 grid gap-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-xl">Atajos</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Salta a cualquier sección.</p>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
             {TABS.filter((t) => t.id !== "overview").map((t) => (
               <button key={t.id} onClick={() => onJump(t.id)}
-                className="group flex items-center justify-between rounded-xl border bg-background px-4 py-3 text-left transition hover:border-[color:var(--bronze)] hover:bg-secondary/40">
-                <span className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm">{t.icon}</span>
-                  <span>
-                    <span className="block text-sm font-medium">{t.label}</span>
-                    <span className="block text-xs text-muted-foreground">{t.desc}</span>
-                  </span>
-                </span>
-                <span className="text-muted-foreground group-hover:text-[color:var(--bronze)]">→</span>
+                className="group flex h-full flex-col items-start gap-2 rounded-xl border bg-background p-4 text-left transition hover:-translate-y-0.5 hover:border-[color:var(--bronze)] hover:bg-secondary/40 hover:shadow-sm">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-base">{t.icon}</span>
+                <span className="block text-sm font-medium">{t.label}</span>
+                <span className="block text-[11px] leading-snug text-muted-foreground">{t.desc}</span>
+                <span className="mt-auto pt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground group-hover:text-[color:var(--bronze)]">Abrir →</span>
               </button>
             ))}
           </div>
