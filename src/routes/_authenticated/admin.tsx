@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -21,6 +21,8 @@ import {
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyAccess } from "@/lib/access.functions";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 function buildTenantPublicUrl(slug: string): string {
   if (typeof window === "undefined") return `/b/${slug}`;
