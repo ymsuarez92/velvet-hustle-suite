@@ -225,7 +225,7 @@ function Services({ tenant }: { tenant: PublicTenant }) {
         {tenant.services.map((s) => (
           <article key={s.id} className="group relative overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)] transition hover:shadow-[var(--shadow-luxury)]">
             <div className="relative aspect-[4/5] overflow-hidden">
-              <img src={s.image} alt={s.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" />
+              <img src={s.image ?? undefined} alt={s.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" />
               <div className="absolute inset-0 bg-gradient-to-t from-charcoal/55 via-transparent" />
               <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
                 {s.durationMin} min
