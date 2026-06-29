@@ -94,6 +94,50 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          business_id: string | null
+          created_at: string
+          entity: string | null
+          entity_id: string | null
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_dates: {
         Row: {
           blocked_date: string
@@ -182,6 +226,8 @@ export type Database = {
           primary_color: string | null
           slug: string
           status: Database["public"]["Enums"]["business_status"]
+          subscription_plan: string
+          suspended_at: string | null
           tagline: string | null
           updated_at: string
           whatsapp: string | null
@@ -200,6 +246,8 @@ export type Database = {
           primary_color?: string | null
           slug: string
           status?: Database["public"]["Enums"]["business_status"]
+          subscription_plan?: string
+          suspended_at?: string | null
           tagline?: string | null
           updated_at?: string
           whatsapp?: string | null
@@ -218,6 +266,8 @@ export type Database = {
           primary_color?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["business_status"]
+          subscription_plan?: string
+          suspended_at?: string | null
           tagline?: string | null
           updated_at?: string
           whatsapp?: string | null
@@ -309,6 +359,48 @@ export type Database = {
           },
         ]
       }
+      membership_templates: {
+        Row: {
+          badge: string | null
+          benefits: string[]
+          created_at: string
+          description: string | null
+          id: string
+          included_cuts: number | null
+          is_active: boolean
+          monthly_price: number
+          name: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          badge?: string | null
+          benefits?: string[]
+          created_at?: string
+          description?: string | null
+          id?: string
+          included_cuts?: number | null
+          is_active?: boolean
+          monthly_price?: number
+          name: string
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          badge?: string | null
+          benefits?: string[]
+          created_at?: string
+          description?: string | null
+          id?: string
+          included_cuts?: number | null
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       memberships: {
         Row: {
           badge: string | null
@@ -364,6 +456,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      service_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          duration_min: number
+          id: string
+          image_url: string | null
+          is_active: boolean
+          suggested_price: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration_min?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          suggested_price?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration_min?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          suggested_price?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       services: {
         Row: {
