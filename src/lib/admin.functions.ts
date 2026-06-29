@@ -177,6 +177,159 @@ export const getMyAccount = createServerFn({ method: "GET" })
     return { userId: context.userId, roles: roles ?? [] };
   });
 
+/* -------------------- GLOBAL CROSS-TENANT VIEWS -------------------- */
+
+export type AdminAppointment = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  businessSlug: string;
+  serviceName: string | null;
+  customerName: string;
+  customerPhone: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  notes: string | null;
+};
+
+export const listAllAppointments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { limit?: number; businessId?: string | null } = {}) => d)
+  .handler(async ({ context, data }): Promise<AdminAppointment[]> => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin
+      .from("appointments")
+      .select("id, business_id, service_id, customer_name, customer_phone, starts_at, ends_at, status, notes, businesses!inner(name, slug), services(name)")
+      .order("starts_at", { ascending: false })
+      .limit(data?.limit ?? 200);
+    if (data?.businessId) q = q.eq("business_id", data.businessId);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r: any) => ({
+      id: r.id,
+      businessId: r.business_id,
+      businessName: r.businesses?.name ?? "—",
+      businessSlug: r.businesses?.slug ?? "",
+      serviceName: r.services?.name ?? null,
+      customerName: r.customer_name,
+      customerPhone: r.customer_phone,
+      startsAt: r.starts_at,
+      endsAt: r.ends_at,
+      status: r.status,
+      notes: r.notes,
+    }));
+  });
+
+export type AdminMembership = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  businessSlug: string;
+  name: string;
+  tier: string;
+  price: number;
+  isActive: boolean;
+  activeSubscribers: number;
+};
+
+export const listAllMemberships = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminMembership[]> => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("memberships")
+      .select("id, business_id, name, tier, price, is_active, businesses!inner(name, slug)")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const ids = (rows ?? []).map((r: any) => r.id);
+    const { data: subs } = ids.length
+      ? await supabaseAdmin.from("subscriptions").select("membership_id, status").in("membership_id", ids)
+      : { data: [] as any[] };
+    const counts = new Map<string, number>();
+    for (const s of (subs ?? []) as any[]) {
+      if (s.status === "active") counts.set(s.membership_id, (counts.get(s.membership_id) ?? 0) + 1);
+    }
+    return (rows ?? []).map((r: any) => ({
+      id: r.id,
+      businessId: r.business_id,
+      businessName: r.businesses?.name ?? "—",
+      businessSlug: r.businesses?.slug ?? "",
+      name: r.name,
+      tier: r.tier ?? "—",
+      price: Number(r.price) || 0,
+      isActive: r.is_active,
+      activeSubscribers: counts.get(r.id) ?? 0,
+    }));
+  });
+
+export type AdminService = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  businessSlug: string;
+  name: string;
+  category: string | null;
+  durationMin: number;
+  price: number;
+  isActive: boolean;
+};
+
+export const listAllServices = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminService[]> => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("services")
+      .select("id, business_id, name, category, duration_min, price, is_active, businesses!inner(name, slug)")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r: any) => ({
+      id: r.id,
+      businessId: r.business_id,
+      businessName: r.businesses?.name ?? "—",
+      businessSlug: r.businesses?.slug ?? "",
+      name: r.name,
+      category: r.category,
+      durationMin: r.duration_min ?? 0,
+      price: Number(r.price) || 0,
+      isActive: r.is_active,
+    }));
+  });
+
+export type AdminHours = {
+  businessId: string;
+  businessName: string;
+  businessSlug: string;
+  days: Array<{ weekday: number; isOpen: boolean; openTime: string | null; closeTime: string | null }>;
+};
+
+export const listAllBusinessHours = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminHours[]> => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: biz, error: be }, { data: hrs, error: he }] = await Promise.all([
+      supabaseAdmin.from("businesses").select("id, name, slug").order("name"),
+      supabaseAdmin.from("business_hours").select("business_id, weekday, is_open, open_time, close_time"),
+    ]);
+    if (be) throw new Error(be.message);
+    if (he) throw new Error(he.message);
+    const map = new Map<string, AdminHours>();
+    for (const b of (biz ?? []) as any[]) {
+      map.set(b.id, { businessId: b.id, businessName: b.name, businessSlug: b.slug, days: [] });
+    }
+    for (const h of (hrs ?? []) as any[]) {
+      const m = map.get(h.business_id);
+      if (m) m.days.push({ weekday: h.weekday, isOpen: h.is_open, openTime: h.open_time, closeTime: h.close_time });
+    }
+    for (const v of map.values()) v.days.sort((a, b) => a.weekday - b.weekday);
+    return Array.from(map.values());
+  });
+
 /* -------------------- PLATFORM STATS -------------------- */
 
 export type PlatformStats = {

@@ -15,6 +15,7 @@ import {
   listServiceTemplates, upsertServiceTemplate, deleteServiceTemplate,
   listMembershipTemplates, upsertMembershipTemplate, deleteMembershipTemplate,
   applyTemplatesToTenant, listAuditLogs,
+  listAllAppointments, listAllMemberships, listAllServices, listAllBusinessHours,
   type AdminTenant, type ServiceTemplate, type MembershipTemplate, type PlatformUser,
 } from "@/lib/admin.functions";
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: SuperAdmin,
 });
 
-type Section = "overview" | "tenants" | "users" | "templates" | "audit";
+type Section = "overview" | "tenants" | "users" | "memberships" | "services" | "appointments" | "hours" | "templates" | "audit";
 
 type NavItem = { id: Section; label: string; Icon: React.ComponentType<{ className?: string }>; soon?: boolean };
 const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
@@ -54,21 +55,10 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
     items: [
       { id: "tenants", label: "Tenants (Negocios)", Icon: Store },
       { id: "users", label: "Usuarios", Icon: Users2 },
-      { id: "tenants", label: "Planes & Suscripciones", Icon: CreditCard, soon: true },
-      { id: "tenants", label: "Pagos & Facturación", Icon: Receipt, soon: true },
-      { id: "tenants", label: "Cupones", Icon: Ticket, soon: true },
-      { id: "audit", label: "Notificaciones", Icon: Bell, soon: true },
-      { id: "overview", label: "Configuraciones", Icon: Settings, soon: true },
-    ],
-  },
-  {
-    title: "Reportes",
-    items: [
-      { id: "overview", label: "Analytics Global", Icon: BarChart3 },
-      { id: "overview", label: "Ingresos", Icon: TrendingUp },
-      { id: "templates", label: "Membresías", Icon: Crown },
-      { id: "tenants", label: "Citas", Icon: Calendar, soon: true },
-      { id: "users", label: "Clientes", Icon: UserCircle2, soon: true },
+      { id: "memberships", label: "Membresías", Icon: Crown },
+      { id: "services", label: "Servicios", Icon: PenSquare },
+      { id: "appointments", label: "Agendas", Icon: Calendar },
+      { id: "hours", label: "Horarios", Icon: Settings },
     ],
   },
   {
@@ -76,7 +66,6 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
     items: [
       { id: "templates", label: "Plantillas de Servicios", Icon: FileText },
       { id: "templates", label: "Plantillas de Membresías", Icon: Library },
-      { id: "templates", label: "Recursos", Icon: Folder, soon: true },
       { id: "audit", label: "Logs de Actividad", Icon: ScrollText },
     ],
   },
@@ -210,9 +199,13 @@ function SuperAdmin() {
         </header>
 
         <main className="px-4 sm:px-6 lg:px-10 py-5 sm:py-6 lg:py-8 flex-1 animate-fade-in">
-          {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : "Dashboard"); }} />}
+          {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : s === "memberships" ? "Membresías" : s === "services" ? "Servicios" : s === "appointments" ? "Agendas" : s === "hours" ? "Horarios" : "Dashboard"); }} />}
           {section === "tenants" && <TenantsSection />}
           {section === "users" && <UsersSection />}
+          {section === "memberships" && <MembershipsGlobalSection />}
+          {section === "services" && <ServicesGlobalSection />}
+          {section === "appointments" && <AppointmentsGlobalSection />}
+          {section === "hours" && <HoursGlobalSection />}
           {section === "templates" && <TemplatesSection />}
           {section === "audit" && <AuditSection />}
         </main>
@@ -1346,5 +1339,274 @@ function Chip({ children, active, onClick }: { children: React.ReactNode; active
       className={`rounded-full px-3 py-1.5 text-xs transition ${active ? "bg-[color:var(--bronze)] text-white" : "bg-background border hover:border-[color:var(--bronze)]"}`}>
       {children}
     </button>
+  );
+}
+
+/* ============== GLOBAL: MEMBERSHIPS / SERVICES / APPOINTMENTS / HOURS ============== */
+
+function TenantFilter({ value, onChange, tenants }: { value: string; onChange: (v: string) => void; tenants: AdminTenant[] }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full sm:w-auto rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-[color:var(--bronze)]"
+    >
+      <option value="">Todos los negocios</option>
+      {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+    </select>
+  );
+}
+
+function SectionHeader({ eyebrow, title, subtitle, action }: { eyebrow: string; title: string; subtitle?: string; action?: React.ReactNode }) {
+  return (
+    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 sm:flex sm:flex-wrap sm:justify-between">
+      <div className="min-w-0">
+        <p className="eyebrow">{eyebrow}</p>
+        <h1 className="font-display text-3xl sm:text-4xl mt-2 truncate">{title}</h1>
+        {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
+      </div>
+      {action}
+    </header>
+  );
+}
+
+function MembershipsGlobalSection() {
+  const list = useServerFn(listAllMemberships);
+  const tList = useServerFn(listAllTenants);
+  const q = useQuery({ queryKey: ["admin", "memberships"], queryFn: () => list() });
+  const tQ = useQuery({ queryKey: ["admin", "tenants"], queryFn: () => tList() });
+  const [tenantId, setTenantId] = useState("");
+  const filtered = (q.data ?? []).filter((m) => !tenantId || m.businessId === tenantId);
+  const totalSubs = filtered.reduce((a, m) => a + m.activeSubscribers, 0);
+  const totalMrr = filtered.reduce((a, m) => a + m.price * m.activeSubscribers, 0);
+
+  return (
+    <div className="space-y-6 max-w-7xl">
+      <SectionHeader eyebrow="Memberships" title="Membresías globales" subtitle="Todas las membresías de todos los negocios de la plataforma." />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MiniStat label="Membresías" value={filtered.length} />
+        <MiniStat label="Suscriptores activos" value={totalSubs} />
+        <MiniStat label="MRR estimado" value={`$${totalMrr.toLocaleString()}`} />
+      </div>
+      <TenantFilter value={tenantId} onChange={setTenantId} tenants={tQ.data ?? []} />
+
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {!q.isLoading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Aún no hay membresías.</p>}
+
+      {/* Desktop */}
+      <div className="hidden md:block overflow-hidden rounded-2xl border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <tr><th className="px-5 py-4">Negocio</th><th className="px-5 py-4">Membresía</th><th className="px-5 py-4">Tier</th><th className="px-5 py-4">Precio</th><th className="px-5 py-4">Suscriptores</th><th className="px-5 py-4">Estado</th></tr>
+          </thead>
+          <tbody>
+            {filtered.map((m) => (
+              <tr key={m.id} className="border-t">
+                <td className="px-5 py-3"><Link to="/b/$slug/admin" params={{ slug: m.businessSlug }} className="hover:underline">{m.businessName}</Link></td>
+                <td className="px-5 py-3 font-medium">{m.name}</td>
+                <td className="px-5 py-3 capitalize"><PlanBadge plan={m.tier} /></td>
+                <td className="px-5 py-3">${m.price.toFixed(0)}</td>
+                <td className="px-5 py-3">{m.activeSubscribers}</td>
+                <td className="px-5 py-3">{m.isActive ? <span className="text-emerald-700 text-xs">Activa</span> : <span className="text-muted-foreground text-xs">Inactiva</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Mobile cards */}
+      <div className="grid gap-3 md:hidden">
+        {filtered.map((m) => (
+          <div key={m.id} className="rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-display text-lg truncate">{m.name}</p>
+                <Link to="/b/$slug/admin" params={{ slug: m.businessSlug }} className="text-xs text-muted-foreground hover:underline truncate block">{m.businessName}</Link>
+              </div>
+              <p className="font-display text-lg shrink-0">${m.price.toFixed(0)}</p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <PlanBadge plan={m.tier} />
+              <span className="rounded-full bg-muted px-2.5 py-1">{m.activeSubscribers} suscritos</span>
+              {m.isActive ? <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1">Activa</span> : <span className="rounded-full bg-muted px-2.5 py-1">Inactiva</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ServicesGlobalSection() {
+  const list = useServerFn(listAllServices);
+  const tList = useServerFn(listAllTenants);
+  const q = useQuery({ queryKey: ["admin", "services"], queryFn: () => list() });
+  const tQ = useQuery({ queryKey: ["admin", "tenants"], queryFn: () => tList() });
+  const [tenantId, setTenantId] = useState("");
+  const [search, setSearch] = useState("");
+  const filtered = (q.data ?? []).filter((s) =>
+    (!tenantId || s.businessId === tenantId) &&
+    (!search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.category ?? "").toLowerCase().includes(search.toLowerCase())),
+  );
+  const avgPrice = filtered.length ? Math.round(filtered.reduce((a, s) => a + s.price, 0) / filtered.length) : 0;
+
+  return (
+    <div className="space-y-6 max-w-7xl">
+      <SectionHeader eyebrow="Services" title="Servicios globales" subtitle="Catálogo de servicios de todos los negocios." />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MiniStat label="Servicios" value={filtered.length} />
+        <MiniStat label="Negocios distintos" value={new Set(filtered.map((s) => s.businessId)).size} />
+        <MiniStat label="Precio promedio" value={`$${avgPrice}`} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar servicio…" className="flex-1 min-w-[180px] rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-[color:var(--bronze)]" />
+        <TenantFilter value={tenantId} onChange={setTenantId} tenants={tQ.data ?? []} />
+      </div>
+
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {!q.isLoading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Sin servicios.</p>}
+
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((s) => (
+          <div key={s.id} className="rounded-2xl border bg-card p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground truncate">{s.category ?? "Servicio"}</p>
+                <h3 className="mt-1 font-display text-lg truncate">{s.name}</h3>
+                <Link to="/b/$slug/admin" params={{ slug: s.businessSlug }} className="text-xs text-muted-foreground hover:underline truncate block">{s.businessName}</Link>
+              </div>
+              <p className="font-display text-lg shrink-0">${s.price.toFixed(0)}</p>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <span>{s.durationMin} min</span>
+              {s.isActive ? <span className="text-emerald-700">Activo</span> : <span>Inactivo</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AppointmentsGlobalSection() {
+  const list = useServerFn(listAllAppointments);
+  const tList = useServerFn(listAllTenants);
+  const [tenantId, setTenantId] = useState("");
+  const q = useQuery({ queryKey: ["admin", "appointments", tenantId], queryFn: () => list({ data: { businessId: tenantId || null, limit: 300 } }) });
+  const tQ = useQuery({ queryKey: ["admin", "tenants"], queryFn: () => tList() });
+
+  const statusCls: Record<string, string> = {
+    pending: "bg-amber-100 text-amber-800",
+    confirmed: "bg-emerald-100 text-emerald-800",
+    completed: "bg-blue-100 text-blue-800",
+    cancelled: "bg-red-100 text-red-800",
+    no_show: "bg-neutral-200 text-neutral-700",
+  };
+
+  const rows = q.data ?? [];
+  const upcoming = rows.filter((r) => new Date(r.startsAt) >= new Date()).length;
+
+  return (
+    <div className="space-y-6 max-w-7xl">
+      <SectionHeader eyebrow="Agendas" title="Citas globales" subtitle="Últimas 300 citas de todos los negocios." />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MiniStat label="Citas mostradas" value={rows.length} />
+        <MiniStat label="Próximas" value={upcoming} />
+        <MiniStat label="Negocios activos" value={new Set(rows.map((r) => r.businessId)).size} />
+      </div>
+      <TenantFilter value={tenantId} onChange={setTenantId} tenants={tQ.data ?? []} />
+
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {!q.isLoading && rows.length === 0 && <p className="text-sm text-muted-foreground">Aún no hay citas.</p>}
+
+      {/* Desktop */}
+      <div className="hidden md:block overflow-hidden rounded-2xl border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            <tr><th className="px-5 py-4">Fecha</th><th className="px-5 py-4">Negocio</th><th className="px-5 py-4">Cliente</th><th className="px-5 py-4">Servicio</th><th className="px-5 py-4">Estado</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t">
+                <td className="px-5 py-3 whitespace-nowrap">{new Date(r.startsAt).toLocaleString()}</td>
+                <td className="px-5 py-3"><Link to="/b/$slug/admin" params={{ slug: r.businessSlug }} className="hover:underline">{r.businessName}</Link></td>
+                <td className="px-5 py-3"><div className="font-medium">{r.customerName}</div><div className="text-xs text-muted-foreground">{r.customerPhone}</div></td>
+                <td className="px-5 py-3">{r.serviceName ?? "—"}</td>
+                <td className="px-5 py-3"><span className={`rounded-full px-2.5 py-1 text-xs ${statusCls[r.status] ?? "bg-muted"}`}>{r.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Mobile cards */}
+      <div className="grid gap-3 md:hidden">
+        {rows.map((r) => (
+          <div key={r.id} className="rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">{new Date(r.startsAt).toLocaleString()}</p>
+                <p className="font-medium truncate mt-0.5">{r.customerName}</p>
+                <p className="text-xs text-muted-foreground truncate">{r.serviceName ?? "—"} · {r.customerPhone}</p>
+              </div>
+              <span className={`rounded-full px-2.5 py-1 text-[10px] shrink-0 ${statusCls[r.status] ?? "bg-muted"}`}>{r.status}</span>
+            </div>
+            <Link to="/b/$slug/admin" params={{ slug: r.businessSlug }} className="mt-2 inline-block text-xs text-[color:var(--bronze)] hover:underline">{r.businessName} →</Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HoursGlobalSection() {
+  const list = useServerFn(listAllBusinessHours);
+  const q = useQuery({ queryKey: ["admin", "hours"], queryFn: () => list() });
+  const [search, setSearch] = useState("");
+  const days = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const filtered = (q.data ?? []).filter((b) => !search || b.businessName.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="space-y-6 max-w-7xl">
+      <SectionHeader eyebrow="Horarios" title="Horarios de operación" subtitle="Horarios configurados por cada negocio." />
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar negocio…" className="w-full sm:w-72 rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-[color:var(--bronze)]" />
+
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {!q.isLoading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Sin negocios.</p>}
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {filtered.map((b) => {
+          const map = new Map<number, { isOpen: boolean; openTime: string | null; closeTime: string | null }>();
+          for (const d of b.days) map.set(d.weekday, d);
+          return (
+            <div key={b.businessId} className="rounded-2xl border bg-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-display text-lg truncate">{b.businessName}</h3>
+                <Link to="/b/$slug/admin" params={{ slug: b.businessSlug }} className="text-xs text-[color:var(--bronze)] hover:underline shrink-0">Gestionar →</Link>
+              </div>
+              <ul className="mt-3 grid grid-cols-7 gap-1.5 text-center text-[11px]">
+                {days.map((d, wd) => {
+                  const h = map.get(wd);
+                  const open = h?.isOpen && h.openTime && h.closeTime;
+                  return (
+                    <li key={wd} className={`rounded-lg border px-1 py-2 ${open ? "bg-[color:var(--bronze)]/10 border-[color:var(--bronze)]/30" : "bg-muted/40 text-muted-foreground"}`}>
+                      <p className="font-medium">{d}</p>
+                      <p className="mt-1 text-[10px]">{open ? `${h.openTime?.slice(0, 5)}–${h.closeTime?.slice(0, 5)}` : "Cerrado"}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border bg-card p-4">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-display text-2xl">{value}</p>
+    </div>
   );
 }
