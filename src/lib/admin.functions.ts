@@ -468,7 +468,7 @@ export const applyTemplatesToTenant = createServerFn({ method: "POST" })
 
 export type AuditLogRow = {
   id: string; createdAt: string; actorEmail: string | null; businessId: string | null;
-  businessName: string | null; action: string; entity: string | null; entityId: string | null; metadata: unknown;
+  businessName: string | null; action: string; entity: string | null; entityId: string | null; metadata: string;
 };
 
 export const listAuditLogs = createServerFn({ method: "GET" })
@@ -505,6 +505,6 @@ export const listAuditLogs = createServerFn({ method: "GET" })
       action: r.action,
       entity: r.entity,
       entityId: r.entity_id,
-      metadata: (r.metadata ?? {}) as unknown,
+      metadata: JSON.stringify(r.metadata ?? {}),
     }));
   });
