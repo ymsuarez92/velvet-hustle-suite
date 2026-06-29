@@ -189,6 +189,198 @@ function SiteEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => 
   );
 }
 
+/* -------------------- SCHEDULE -------------------- */
+const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+function ScheduleEditor({ slug }: { slug: string }) {
+  const fetchSched = useServerFn(getSchedule);
+  const saveHours = useServerFn(updateBusinessHours);
+  const addBlock = useServerFn(addBlockedDate);
+  const rmBlock = useServerFn(removeBlockedDate);
+  const q = useQuery({ queryKey: ["sched", slug], queryFn: () => fetchSched({ data: { slug } }) });
+  const [hours, setHours] = useState<ScheduleBundle["hours"] | null>(null);
+  const [newDate, setNewDate] = useState("");
+  const [newReason, setNewReason] = useState("");
+
+  if (q.isLoading) return <p>Loading…</p>;
+  if (q.error) return <p className="text-red-600">{(q.error as Error).message}</p>;
+  const data = (hours ? { ...q.data!, hours } : q.data!) as ScheduleBundle;
+
+  function patchDay(i: number, patch: Partial<ScheduleBundle["hours"][number]>) {
+    const next = data.hours.map((h, idx) => idx === i ? { ...h, ...patch } : h);
+    setHours(next);
+  }
+
+  const saveMut = useMutation({
+    mutationFn: () => saveHours({ data: { slug, hours: data.hours } }),
+    onSuccess: () => { setHours(null); q.refetch(); },
+  });
+  const addMut = useMutation({
+    mutationFn: () => addBlock({ data: { slug, date: newDate, reason: newReason || undefined } }),
+    onSuccess: () => { setNewDate(""); setNewReason(""); q.refetch(); },
+  });
+  const rmMut = useMutation({
+    mutationFn: (id: string) => rmBlock({ data: { slug, id } }),
+    onSuccess: () => q.refetch(),
+  });
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-2xl border bg-card p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-2xl">Business hours</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Available booking slots are calculated from these hours.</p>
+          </div>
+          <button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !hours} className="btn-luxury">
+            {saveMut.isPending ? "Saving…" : "Save hours"}
+          </button>
+        </div>
+        <div className="mt-6 divide-y divide-border">
+          {data.hours.map((h, i) => (
+            <div key={h.weekday} className="grid grid-cols-[120px_80px_1fr_1fr_1fr_1fr] items-center gap-3 py-3 text-sm">
+              <span className="font-medium">{WEEKDAYS[h.weekday]}</span>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" checked={h.isOpen} onChange={(e) => patchDay(i, { isOpen: e.target.checked })} />
+                <span className="text-xs text-muted-foreground">Open</span>
+              </label>
+              <TimeInput label="Open" value={h.open ?? ""} disabled={!h.isOpen} onChange={(v) => patchDay(i, { open: v || null })} />
+              <TimeInput label="Close" value={h.close ?? ""} disabled={!h.isOpen} onChange={(v) => patchDay(i, { close: v || null })} />
+              <TimeInput label="Break start" value={h.breakStart ?? ""} disabled={!h.isOpen} onChange={(v) => patchDay(i, { breakStart: v || null })} />
+              <TimeInput label="Break end" value={h.breakEnd ?? ""} disabled={!h.isOpen} onChange={(v) => patchDay(i, { breakEnd: v || null })} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-8">
+        <h2 className="font-display text-2xl">Blocked dates</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Holidays, closures, off days. No bookings will be accepted on these dates.</p>
+        <div className="mt-6 flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Date</span>
+            <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="mt-2 rounded-md border bg-background px-4 py-3 text-sm" />
+          </label>
+          <label className="block flex-1 min-w-[200px]">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reason (optional)</span>
+            <input value={newReason} onChange={(e) => setNewReason(e.target.value)} placeholder="Holiday" className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm" />
+          </label>
+          <button disabled={!newDate || addMut.isPending} onClick={() => addMut.mutate()} className="btn-luxury">Add</button>
+        </div>
+        <ul className="mt-6 divide-y divide-border">
+          {data.blocked.length === 0 && <li className="py-4 text-sm text-muted-foreground">No blocked dates.</li>}
+          {data.blocked.map((b) => (
+            <li key={b.id} className="flex items-center justify-between py-3 text-sm">
+              <span><strong className="font-display">{new Date(b.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "long", year: "numeric" })}</strong>{b.reason ? ` · ${b.reason}` : ""}</span>
+              <button onClick={() => rmMut.mutate(b.id)} className="text-xs uppercase tracking-[0.18em] text-red-700">Remove</button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function TimeInput({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+      <input type="time" value={value?.slice(0,5) ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-40" />
+    </label>
+  );
+}
+
+/* -------------------- AGENDA -------------------- */
+function AgendaView({ slug }: { slug: string }) {
+  const fetchAppts = useServerFn(listAppointments);
+  const updateStatus = useServerFn(updateAppointmentStatus);
+  const [from, setFrom] = useState(new Date().toISOString().slice(0,10));
+  const q = useQuery({
+    queryKey: ["appts", slug, from],
+    queryFn: () => fetchAppts({ data: { slug, from: new Date(from + "T00:00:00").toISOString() } }),
+  });
+  const statusMut = useMutation({
+    mutationFn: (v: { id: string; status: "confirmed"|"cancelled"|"completed"|"no_show" }) => updateStatus({ data: { slug, ...v } }),
+    onSuccess: () => q.refetch(),
+  });
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, AppointmentRow[]>();
+    for (const a of q.data ?? []) {
+      const k = a.startsAt.slice(0, 10);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(a);
+    }
+    return Array.from(map.entries()).sort(([a],[b]) => a.localeCompare(b));
+  }, [q.data]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between rounded-2xl border bg-card p-6">
+        <div>
+          <h2 className="font-display text-2xl">Agenda</h2>
+          <p className="mt-1 text-sm text-muted-foreground">All upcoming appointments. Updates happen in real time.</p>
+        </div>
+        <label className="block">
+          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">From</span>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-2 rounded-md border bg-background px-3 py-2 text-sm" />
+        </label>
+      </div>
+
+      {q.isLoading && <p>Loading…</p>}
+      {q.data && q.data.length === 0 && <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground">No appointments scheduled.</div>}
+
+      {grouped.map(([day, list]) => (
+        <section key={day} className="rounded-2xl border bg-card overflow-hidden">
+          <header className="border-b bg-secondary/50 px-6 py-3">
+            <p className="font-display text-lg">{new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+          </header>
+          <ul className="divide-y divide-border">
+            {list.map((a) => (
+              <li key={a.id} className="grid grid-cols-[80px_1fr_auto] items-center gap-4 px-6 py-4">
+                <div>
+                  <p className="font-display text-xl">{new Date(a.startsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">→ {new Date(a.endsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{a.customerName} <span className="ml-2 text-muted-foreground font-normal">{a.serviceName ?? ""}</span></p>
+                  <p className="text-xs text-muted-foreground">{a.customerPhone}{a.customerEmail ? ` · ${a.customerEmail}` : ""}</p>
+                  {a.notes && <p className="mt-1 text-xs text-muted-foreground italic">"{a.notes}"</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={a.status} />
+                  <select
+                    value={a.status}
+                    onChange={(e) => statusMut.mutate({ id: a.id, status: e.target.value as any })}
+                    className="rounded-md border bg-background px-2 py-1 text-xs"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="no_show">No-show</option>
+                  </select>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string,string> = {
+    pending: "bg-amber-100 text-amber-800",
+    confirmed: "bg-emerald-100 text-emerald-800",
+    completed: "bg-blue-100 text-blue-800",
+    cancelled: "bg-red-100 text-red-800",
+    no_show: "bg-zinc-200 text-zinc-700",
+  };
+  return <span className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${map[status] ?? "bg-zinc-100"}`}>{status}</span>;
+}
+
 /* -------------------- SERVICES -------------------- */
 function ServicesEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => void }) {
   const save = useServerFn(upsertService);
