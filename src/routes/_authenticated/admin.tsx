@@ -79,6 +79,21 @@ function SuperAdmin() {
   const [section, setSection] = useState<Section>("overview");
   const [activeKey, setActiveKey] = useState<string>("Dashboard");
   const [mobileNav, setMobileNav] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? ""));
+  }, []);
+
+  function jumpToTenants(q: string) {
+    setGlobalSearch(q);
+    if (q.trim()) {
+      setSection("tenants");
+      setActiveKey("Tenants (Negocios)");
+    }
+  }
 
   async function signOut() {
     await qc.cancelQueries();
@@ -180,29 +195,85 @@ function SuperAdmin() {
           <div className="hidden lg:block flex-1" />
           <div className="hidden md:flex items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 w-[260px] xl:w-[320px] focus-within:ring-2 focus-within:ring-[#d4a85a]/30 focus-within:border-[#d4a85a]/40 transition-all">
             <Search className="h-4 w-4 text-neutral-400" />
-            <input placeholder="Buscar negocios, usuarios..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400" />
+            <input
+              value={globalSearch}
+              onChange={(e) => jumpToTenants(e.target.value)}
+              placeholder="Buscar negocios…"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400"
+            />
             <kbd className="text-[10px] text-neutral-400 border rounded px-1.5 py-0.5">⌘K</kbd>
           </div>
-          <button className="md:hidden h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 transition" aria-label="Buscar">
+          <button
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            className="md:hidden h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 transition"
+            aria-label="Buscar"
+          >
             <Search className="h-4 w-4 text-neutral-600" />
           </button>
-          <button className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 transition active:scale-95">
-            <Bell className="h-4 w-4 text-neutral-600" />
-            <span className="absolute -top-0.5 -right-0.5 bg-[#d4a85a] text-[10px] text-white rounded-full h-4 w-4 grid place-items-center animate-pulse">3</span>
-          </button>
-          <button className="hidden sm:grid h-9 w-9 place-items-center rounded-full hover:bg-black/5 transition"><HelpCircle className="h-4 w-4 text-neutral-600" /></button>
-          <div className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-sm font-medium ring-2 ring-white shadow-sm">SA</div>
-            <div className="text-right hidden xl:block">
-              <p className="text-sm font-medium leading-tight">Super Admin</p>
-              <p className="text-[11px] text-neutral-500">superadmin@elite.com</p>
-            </div>
-          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5 transition active:scale-95" aria-label="Notificaciones">
+                <Bell className="h-4 w-4 text-neutral-600" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-0">
+              <div className="px-4 py-3 border-b">
+                <p className="text-sm font-medium">Notificaciones</p>
+                <p className="text-[11px] text-neutral-500">Últimas actualizaciones de la plataforma</p>
+              </div>
+              <div className="px-4 py-6 text-center text-xs text-neutral-500">No tienes notificaciones nuevas.</div>
+            </PopoverContent>
+          </Popover>
+          <button className="hidden sm:grid h-9 w-9 place-items-center rounded-full hover:bg-black/5 transition" aria-label="Ayuda"><HelpCircle className="h-4 w-4 text-neutral-600" /></button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l outline-none focus-visible:ring-2 focus-visible:ring-[#d4a85a]/40 rounded-full" aria-label="Cuenta">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-sm font-medium ring-2 ring-white shadow-sm">
+                  {(userEmail[0] ?? "S").toUpperCase()}
+                </div>
+                <div className="text-right hidden xl:block">
+                  <p className="text-sm font-medium leading-tight">Super Admin</p>
+                  <p className="text-[11px] text-neutral-500 truncate max-w-[160px]">{userEmail || "—"}</p>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <p className="text-sm">Super Admin</p>
+                <p className="text-[11px] font-normal text-neutral-500 truncate">{userEmail || "—"}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setSection("overview"); setActiveKey("Dashboard"); }}>
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setSection("tenants"); setActiveKey("Tenants (Negocios)"); }}>
+                Tenants
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-red-600 focus:text-red-700" onClick={signOut}>
+                Cerrar sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
+
+        {mobileSearchOpen && (
+          <div className="md:hidden px-4 py-3 bg-white border-b border-black/5 flex items-center gap-2">
+            <Search className="h-4 w-4 text-neutral-400" />
+            <input
+              autoFocus
+              value={globalSearch}
+              onChange={(e) => jumpToTenants(e.target.value)}
+              placeholder="Buscar negocios…"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400"
+            />
+            <button onClick={() => { setMobileSearchOpen(false); setGlobalSearch(""); }} className="text-xs text-neutral-500 px-2">Cerrar</button>
+          </div>
+        )}
 
         <main className="px-4 sm:px-6 lg:px-10 py-5 sm:py-6 lg:py-8 flex-1 animate-fade-in">
           {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : s === "memberships" ? "Membresías" : s === "services" ? "Servicios" : s === "appointments" ? "Agendas" : s === "hours" ? "Horarios" : "Dashboard"); }} />}
-          {section === "tenants" && <TenantsSection />}
+          {section === "tenants" && <TenantsSection externalSearch={globalSearch} />}
           {section === "users" && <UsersSection />}
           {section === "memberships" && <MembershipsGlobalSection />}
           {section === "services" && <ServicesGlobalSection />}
