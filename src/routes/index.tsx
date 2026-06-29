@@ -38,7 +38,7 @@ function LoginPage() {
     setError(null);
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(error.message); return; }
+    if (error) { setLoading(false); setError(error.message); return; }
     const access = await getMyAccess().catch(() => null);
     setLoading(false);
     if (access?.isSuperAdmin) { navigate({ to: "/admin" }); return; }
