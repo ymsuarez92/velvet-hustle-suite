@@ -11,9 +11,18 @@ import {
   upsertMembership,
   deleteMembership,
   getOwnerOverview,
+  listCustomers,
+  upsertCustomer,
+  deleteCustomer,
+  getCustomerDetail,
+  listStaff,
+  upsertStaff,
+  deleteStaff,
   type AdminPayload,
   type AdminService,
   type AdminMembership,
+  type AdminCustomer,
+  type AdminStaff,
   type OwnerOverview,
 } from "@/lib/business-admin.functions";
 import {
@@ -47,14 +56,16 @@ export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
   component: BusinessAdmin,
 });
 
-type Tab = "overview" | "site" | "services" | "memberships" | "schedule" | "agenda" | "settings";
+type Tab = "overview" | "site" | "services" | "memberships" | "schedule" | "agenda" | "customers" | "staff" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
   { id: "overview",    label: "Resumen",     icon: "◆", desc: "KPIs y próximas citas" },
   { id: "agenda",      label: "Agenda",      icon: "▦", desc: "Citas confirmadas" },
+  { id: "customers",   label: "Clientes",    icon: "◉", desc: "CRM de clientes" },
   { id: "schedule",    label: "Horarios",    icon: "◷", desc: "Disponibilidad" },
   { id: "services",    label: "Servicios",   icon: "✂", desc: "Catálogo y precios" },
   { id: "memberships", label: "Membresías",  icon: "◈", desc: "Planes activos" },
+  { id: "staff",       label: "Equipo",      icon: "◎", desc: "Barberos y staff" },
   { id: "site",        label: "Sitio web",   icon: "❖", desc: "Contenido público" },
   { id: "settings",    label: "Ajustes",     icon: "⚙", desc: "Datos del negocio" },
 ];
@@ -148,6 +159,8 @@ function BusinessAdmin() {
         {tab === "memberships" && <MembershipsEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "schedule" && <ScheduleEditor slug={slug} />}
         {tab === "agenda" && <AgendaView slug={slug} />}
+        {tab === "customers" && <CustomersPanel slug={slug} />}
+        {tab === "staff" && <StaffPanel slug={slug} />}
         {tab === "settings" && <SettingsEditor bundle={bundle} onSaved={() => q.refetch()} />}
       </main>
     </div>
@@ -282,6 +295,10 @@ function OverviewPanel({ slug, bundle, onJump }: { slug: string; bundle: AdminPa
 }
 
 /* -------------------- SITE -------------------- */
+type Stat = { value: string; label: string };
+type Pillar = { icon: string; title: string };
+type Testimonial = { name: string; role: string; quote: string; rating: number };
+
 function SiteEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => void }) {
   const save = useServerFn(updateWebsiteContent);
   const [form, setForm] = useState({
@@ -293,6 +310,22 @@ function SiteEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => 
     about_body: bundle.content.aboutBody ?? "",
     gallery: bundle.content.gallery.join("\n"),
   });
+  const [stats, setStats] = useState<Stat[]>(
+    bundle.content.stats.length > 0
+      ? bundle.content.stats
+      : [{ value: "500+", label: "Happy clients" }, { value: "10+", label: "Years" }],
+  );
+  const [pillars, setPillars] = useState<Pillar[]>(
+    bundle.content.pillars.length > 0
+      ? bundle.content.pillars
+      : [{ icon: "scissors", title: "Precision cuts" }, { icon: "crown", title: "Premium service" }],
+  );
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(
+    bundle.content.testimonials.length > 0
+      ? bundle.content.testimonials
+      : [],
+  );
+
   const m = useMutation({
     mutationFn: () => save({ data: { businessId: bundle.business.id, patch: {
       hero_eyebrow: form.hero_eyebrow || null,
@@ -302,41 +335,145 @@ function SiteEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved: () => 
       about_title: form.about_title || null,
       about_body: form.about_body || null,
       gallery: form.gallery.split("\n").map((s) => s.trim()).filter(Boolean),
+      stats,
+      pillars,
+      testimonials,
     } } }),
     onSuccess: onSaved,
   });
 
   return (
     <div className="space-y-8">
+      {/* Hero */}
       <section className="rounded-2xl border bg-card p-8">
         <h2 className="font-display text-2xl">Hero</h2>
+        <p className="mt-1 text-sm text-muted-foreground">La sección principal visible al llegar al sitio.</p>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Field label="Eyebrow" value={form.hero_eyebrow} onChange={(v) => setForm({ ...form, hero_eyebrow: v })} placeholder="Private grooming house" />
+          <Field label="Eyebrow (texto pequeño)" value={form.hero_eyebrow} onChange={(v) => setForm({ ...form, hero_eyebrow: v })} placeholder="Private grooming house" />
           <Field label="Hero image URL" value={form.hero_image_url} onChange={(v) => setForm({ ...form, hero_image_url: v })} placeholder="https://…" />
-          <div className="md:col-span-2"><Field label="Title" value={form.hero_title} onChange={(v) => setForm({ ...form, hero_title: v })} placeholder="Premium grooming experience" /></div>
-          <div className="md:col-span-2"><TextArea label="Subtitle" value={form.hero_subtitle} onChange={(v) => setForm({ ...form, hero_subtitle: v })} /></div>
+          <div className="md:col-span-2">
+            <Field label="Título principal" value={form.hero_title} onChange={(v) => setForm({ ...form, hero_title: v })} placeholder="Premium grooming experience" />
+          </div>
+          <div className="md:col-span-2">
+            <TextArea label="Subtítulo" value={form.hero_subtitle} onChange={(v) => setForm({ ...form, hero_subtitle: v })} />
+          </div>
+        </div>
+        {form.hero_image_url && (
+          <div className="mt-4 rounded-xl overflow-hidden aspect-video w-full max-w-sm">
+            <img src={form.hero_image_url} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
+      </section>
+
+      {/* Stats */}
+      <section className="rounded-2xl border bg-card p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-2xl">Estadísticas</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Números que aparecen en el hero (p.ej. "500+ clientes").</p>
+          </div>
+          <button onClick={() => setStats([...stats, { value: "", label: "" }])} className="rounded-full border px-3 py-1.5 text-xs hover:border-[color:var(--bronze)]">+ Añadir</button>
+        </div>
+        <div className="mt-6 space-y-3">
+          {stats.map((st, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
+              <Field label={i === 0 ? "Valor" : ""} value={st.value} onChange={(v) => setStats(stats.map((s, j) => j === i ? { ...s, value: v } : s))} placeholder="500+" />
+              <Field label={i === 0 ? "Etiqueta" : ""} value={st.label} onChange={(v) => setStats(stats.map((s, j) => j === i ? { ...s, label: v } : s))} placeholder="Clientes felices" />
+              <button onClick={() => setStats(stats.filter((_, j) => j !== i))} className="rounded-full border border-red-300 text-red-700 px-3 py-2.5 text-xs mb-[2px]">✕</button>
+            </div>
+          ))}
+          {stats.length === 0 && <p className="text-sm text-muted-foreground">Sin estadísticas. Añade una.</p>}
         </div>
       </section>
 
+      {/* Pillars */}
       <section className="rounded-2xl border bg-card p-8">
-        <h2 className="font-display text-2xl">About</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-2xl">Pilares / Features</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Frases cortas con ícono que aparecen bajo el hero.</p>
+          </div>
+          <button onClick={() => setPillars([...pillars, { icon: "star", title: "" }])} className="rounded-full border px-3 py-1.5 text-xs hover:border-[color:var(--bronze)]">+ Añadir</button>
+        </div>
+        <div className="mt-6 space-y-3">
+          {pillars.map((p, i) => (
+            <div key={i} className="grid grid-cols-[120px_1fr_auto] gap-3 items-end">
+              <label className="block">
+                {i === 0 && <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ícono</span>}
+                <select value={p.icon} onChange={(e) => setPillars(pillars.map((pl, j) => j === i ? { ...pl, icon: e.target.value } : pl))}
+                  className={`w-full rounded-md border bg-background px-3 py-3 text-sm ${i === 0 ? "mt-2" : ""}`}>
+                  <option value="scissors">✂ Scissors</option>
+                  <option value="crown">♛ Crown</option>
+                  <option value="sparkles">✦ Sparkles</option>
+                  <option value="star">★ Star</option>
+                </select>
+              </label>
+              <Field label={i === 0 ? "Texto" : ""} value={p.title} onChange={(v) => setPillars(pillars.map((pl, j) => j === i ? { ...pl, title: v } : pl))} placeholder="Precision cuts" />
+              <button onClick={() => setPillars(pillars.filter((_, j) => j !== i))} className="rounded-full border border-red-300 text-red-700 px-3 py-2.5 text-xs mb-[2px]">✕</button>
+            </div>
+          ))}
+          {pillars.length === 0 && <p className="text-sm text-muted-foreground">Sin pilares. Añade uno.</p>}
+        </div>
+      </section>
+
+      {/* About */}
+      <section className="rounded-2xl border bg-card p-8">
+        <h2 className="font-display text-2xl">Sobre nosotros</h2>
         <div className="mt-6 grid gap-4">
-          <Field label="About title" value={form.about_title} onChange={(v) => setForm({ ...form, about_title: v })} />
-          <TextArea label="About body" value={form.about_body} onChange={(v) => setForm({ ...form, about_body: v })} rows={5} />
+          <Field label="Título" value={form.about_title} onChange={(v) => setForm({ ...form, about_title: v })} placeholder="Nuestra historia" />
+          <TextArea label="Descripción" value={form.about_body} onChange={(v) => setForm({ ...form, about_body: v })} rows={5} />
         </div>
       </section>
 
+      {/* Gallery */}
       <section className="rounded-2xl border bg-card p-8">
-        <h2 className="font-display text-2xl">Gallery</h2>
-        <p className="mt-1 text-sm text-muted-foreground">One image URL per line.</p>
-        <TextArea label="Gallery URLs" value={form.gallery} onChange={(v) => setForm({ ...form, gallery: v })} rows={6} />
+        <h2 className="font-display text-2xl">Galería</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Una URL de imagen por línea.</p>
+        <TextArea label="URLs de galería" value={form.gallery} onChange={(v) => setForm({ ...form, gallery: v })} rows={6} />
+      </section>
+
+      {/* Testimonials */}
+      <section className="rounded-2xl border bg-card p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-2xl">Testimonios</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Reseñas que aparecen en el sitio.</p>
+          </div>
+          <button
+            onClick={() => setTestimonials([...testimonials, { name: "", role: "Cliente", quote: "", rating: 5 }])}
+            className="rounded-full border px-3 py-1.5 text-xs hover:border-[color:var(--bronze)]"
+          >+ Añadir</button>
+        </div>
+        <div className="mt-6 space-y-4">
+          {testimonials.map((t, i) => (
+            <div key={i} className="rounded-xl border bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Testimonio {i + 1}</p>
+                <button onClick={() => setTestimonials(testimonials.filter((_, j) => j !== i))} className="text-red-600 text-xs hover:text-red-700">Eliminar</button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Nombre" value={t.name} onChange={(v) => setTestimonials(testimonials.map((tt, j) => j === i ? { ...tt, name: v } : tt))} placeholder="Juan García" />
+                <Field label="Rol / cargo" value={t.role} onChange={(v) => setTestimonials(testimonials.map((tt, j) => j === i ? { ...tt, role: v } : tt))} placeholder="Cliente frecuente" />
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Calificación</span>
+                  <select value={t.rating} onChange={(e) => setTestimonials(testimonials.map((tt, j) => j === i ? { ...tt, rating: Number(e.target.value) } : tt))}
+                    className="mt-2 w-full rounded-md border bg-background px-3 py-3 text-sm">
+                    {[5, 4, 3].map((r) => <option key={r} value={r}>{r} estrellas</option>)}
+                  </select>
+                </label>
+              </div>
+              <TextArea label="Cita / reseña" value={t.quote} onChange={(v) => setTestimonials(testimonials.map((tt, j) => j === i ? { ...tt, quote: v } : tt))} rows={2} />
+            </div>
+          ))}
+          {testimonials.length === 0 && <p className="text-sm text-muted-foreground">Sin testimonios. Añade uno.</p>}
+        </div>
       </section>
 
       <div className="flex items-center justify-end gap-3">
         {m.error && <p className="text-sm text-red-600">{(m.error as Error).message}</p>}
-        {m.isSuccess && <p className="text-sm text-emerald-700">Saved ✓</p>}
+        {m.isSuccess && <p className="text-sm text-emerald-700">Guardado ✓</p>}
         <button onClick={() => m.mutate()} disabled={m.isPending} className="btn-luxury">
-          {m.isPending ? "Saving…" : "Save website"}
+          {m.isPending ? "Guardando…" : "Guardar sitio web"}
         </button>
       </div>
     </div>
@@ -692,6 +829,454 @@ function MembershipsEditor({ bundle, onSaved }: { bundle: AdminPayload; onSaved:
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* -------------------- CUSTOMERS CRM -------------------- */
+function CustomersPanel({ slug }: { slug: string }) {
+  const fetchCustomers = useServerFn(listCustomers);
+  const upsertCust = useServerFn(upsertCustomer);
+  const delCust = useServerFn(deleteCustomer);
+  const fetchDetail = useServerFn(getCustomerDetail);
+  const qc = useQueryClient();
+
+  const q = useQuery({
+    queryKey: ["customers", slug],
+    queryFn: () => fetchCustomers({ data: { slug } }),
+  });
+
+  const upsertMut = useMutation({
+    mutationFn: (customer: any) => upsertCust({ data: { slug, customer } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["customers", slug] }),
+  });
+  const delMut = useMutation({
+    mutationFn: (customerId: string) => delCust({ data: { slug, customerId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["customers", slug] }),
+  });
+
+  const [edit, setEdit] = useState<Partial<AdminCustomer> | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const customers = q.data ?? [];
+  const filtered = customers.filter((c) =>
+    !search || c.fullName.toLowerCase().includes(search.toLowerCase()) ||
+    (c.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (c.phone ?? "").includes(search),
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-display text-3xl">Clientes</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{customers.length} clientes registrados</p>
+        </div>
+        <button onClick={() => setEdit({ fullName: "", email: "", phone: "", notes: "" })} className="btn-luxury">+ Nuevo cliente</button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Total clientes</p>
+          <p className="mt-2 font-display text-3xl">{customers.length}</p>
+        </div>
+        <div className="rounded-2xl border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Con membresía activa</p>
+          <p className="mt-2 font-display text-3xl">{customers.filter((c) => c.activeMembership).length}</p>
+        </div>
+        <div className="rounded-2xl border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Total visitas</p>
+          <p className="mt-2 font-display text-3xl">{customers.reduce((a, c) => a + c.totalVisits, 0)}</p>
+        </div>
+      </div>
+
+      {/* Search */}
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Buscar por nombre, email o teléfono…"
+        className="w-full rounded-full border bg-background px-4 py-2.5 text-sm outline-none focus:border-[color:var(--bronze)]"
+      />
+
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando clientes…</p>}
+      {!q.isLoading && filtered.length === 0 && (
+        <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground">
+          {search ? "Sin resultados para esa búsqueda." : "No hay clientes aún. ¡Agrega el primero!"}
+        </div>
+      )}
+
+      {/* Desktop table */}
+      {filtered.length > 0 && (
+        <div className="hidden md:block overflow-hidden rounded-2xl border bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <tr>
+                <th className="px-5 py-4">Cliente</th>
+                <th className="px-5 py-4">Contacto</th>
+                <th className="px-5 py-4">Membresía</th>
+                <th className="px-5 py-4">Visitas</th>
+                <th className="px-5 py-4">Última cita</th>
+                <th className="px-5 py-4 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} className="border-t hover:bg-muted/20 transition-colors">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-[color:var(--bronze)]/15 text-[color:var(--bronze)] grid place-items-center font-display text-sm shrink-0">
+                        {c.fullName[0]?.toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{c.fullName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.email ?? "Sin email"}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-muted-foreground">{c.phone ?? "—"}</td>
+                  <td className="px-5 py-4">
+                    {c.activeMembership
+                      ? <span className="rounded-full bg-[color:var(--bronze)]/15 text-[color:var(--bronze)] px-2.5 py-1 text-xs">{c.activeMembership.name}</span>
+                      : <span className="text-xs text-muted-foreground">—</span>}
+                  </td>
+                  <td className="px-5 py-4">{c.totalVisits}</td>
+                  <td className="px-5 py-4 text-xs text-muted-foreground">
+                    {c.lastAppointment ? new Date(c.lastAppointment).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="inline-flex gap-1.5">
+                      <button onClick={() => setDetail(c.id)} className="rounded-full border px-3 py-1 text-xs hover:border-[color:var(--bronze)]">Ver</button>
+                      <button onClick={() => setEdit(c)} className="rounded-full border px-3 py-1 text-xs">Editar</button>
+                      <button onClick={() => { if (confirm(`¿Eliminar a ${c.fullName}?`)) delMut.mutate(c.id); }} className="rounded-full border border-red-300 text-red-700 px-3 py-1 text-xs">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Mobile cards */}
+      {filtered.length > 0 && (
+        <div className="grid gap-3 md:hidden">
+          {filtered.map((c) => (
+            <div key={c.id} className="rounded-2xl border bg-card p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-[color:var(--bronze)]/15 text-[color:var(--bronze)] grid place-items-center font-display shrink-0">
+                  {c.fullName[0]?.toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate">{c.fullName}</p>
+                  <p className="text-xs text-muted-foreground">{c.phone ?? c.email ?? "—"}</p>
+                </div>
+                {c.activeMembership && (
+                  <span className="rounded-full bg-[color:var(--bronze)]/15 text-[color:var(--bronze)] px-2 py-0.5 text-[10px] shrink-0">{c.activeMembership.name}</span>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <button onClick={() => setDetail(c.id)} className="rounded-full border px-3 py-1.5 text-xs">Ver perfil</button>
+                <button onClick={() => setEdit(c)} className="rounded-full border px-3 py-1.5 text-xs">Editar</button>
+                <button onClick={() => { if (confirm(`¿Eliminar a ${c.fullName}?`)) delMut.mutate(c.id); }} className="rounded-full border border-red-300 text-red-700 px-3 py-1.5 text-xs">Eliminar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {edit !== null && (
+        <CustomerModal
+          initial={edit}
+          submitting={upsertMut.isPending}
+          onClose={() => setEdit(null)}
+          onSubmit={async (d) => { await upsertMut.mutateAsync(d); setEdit(null); }}
+        />
+      )}
+
+      {/* Detail Modal */}
+      {detail && (
+        <CustomerDetailModal
+          slug={slug}
+          customerId={detail}
+          fetchDetail={fetchDetail}
+          onClose={() => setDetail(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CustomerModal({ initial, submitting, onClose, onSubmit }: {
+  initial: Partial<AdminCustomer>;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (d: any) => Promise<void>;
+}) {
+  const [f, setF] = useState({
+    id: initial.id,
+    full_name: initial.fullName ?? "",
+    email: initial.email ?? "",
+    phone: initial.phone ?? "",
+    notes: initial.notes ?? "",
+  });
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border bg-card p-8" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-2xl">{f.id ? "Editar cliente" : "Nuevo cliente"}</h3>
+        <div className="mt-6 grid gap-4">
+          <Field label="Nombre completo" value={f.full_name} onChange={(v) => setF({ ...f, full_name: v })} placeholder="Juan García" />
+          <Field label="Email" value={f.email} onChange={(v) => setF({ ...f, email: v })} placeholder="juan@ejemplo.com" />
+          <Field label="Teléfono" value={f.phone} onChange={(v) => setF({ ...f, phone: v })} placeholder="+1 555-0000" />
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Notas</span>
+            <textarea value={f.notes} rows={3} onChange={(e) => setF({ ...f, notes: e.target.value })}
+              className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm outline-none focus:border-[color:var(--bronze)]"
+              placeholder="Preferencias, alergias, notas especiales…" />
+          </label>
+        </div>
+        <div className="mt-8 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Cancelar</button>
+          <button onClick={() => onSubmit(f)} disabled={submitting || !f.full_name} className="btn-luxury">
+            {submitting ? "Guardando…" : "Guardar cliente"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerDetailModal({ slug, customerId, fetchDetail, onClose }: {
+  slug: string;
+  customerId: string;
+  fetchDetail: ReturnType<typeof useServerFn<typeof getCustomerDetail>>;
+  onClose: () => void;
+}) {
+  const q = useQuery({
+    queryKey: ["customer-detail", slug, customerId],
+    queryFn: () => fetchDetail({ data: { slug, customerId } }),
+  });
+  const data = q.data as Awaited<ReturnType<typeof getCustomerDetail>> | undefined;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl border bg-card max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h3 className="font-display text-xl">Perfil del cliente</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+        </div>
+        {q.isLoading && <div className="p-8 text-center text-muted-foreground">Cargando…</div>}
+        {data && (
+          <div className="p-6 space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-full bg-[color:var(--bronze)]/15 text-[color:var(--bronze)] grid place-items-center font-display text-2xl shrink-0">
+                {(data.customer as any).full_name?.[0]?.toUpperCase()}
+              </div>
+              <div>
+                <h4 className="font-display text-2xl">{(data.customer as any).full_name}</h4>
+                <p className="text-sm text-muted-foreground">{(data.customer as any).email ?? ""} {(data.customer as any).phone ? `· ${(data.customer as any).phone}` : ""}</p>
+                <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
+                  <span>{(data.customer as any).total_visits} visitas</span>
+                  <span>${Number((data.customer as any).total_spend).toFixed(0)} gastado</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {(data.customer as any).notes && (
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Notas</p>
+                <p className="mt-2 text-sm">{(data.customer as any).notes}</p>
+              </div>
+            )}
+
+            {/* Subscriptions */}
+            <div>
+              <h5 className="font-display text-lg">Membresías</h5>
+              {data.subscriptions.length === 0
+                ? <p className="mt-2 text-sm text-muted-foreground">Sin membresías.</p>
+                : (
+                  <ul className="mt-3 divide-y divide-border rounded-xl border overflow-hidden">
+                    {data.subscriptions.map((s) => (
+                      <li key={s.id} className="flex items-center justify-between gap-4 px-4 py-3 bg-card">
+                        <div>
+                          <p className="font-medium text-sm">{s.membershipName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Desde {new Date(s.startedAt).toLocaleDateString()}
+                            {s.endsAt ? ` · hasta ${new Date(s.endsAt).toLocaleDateString()}` : ""}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`rounded-full px-2.5 py-1 text-xs ${s.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{s.status}</span>
+                          {s.includedCuts && (
+                            <p className="mt-1 text-xs text-muted-foreground">{s.cutsUsed}/{s.includedCuts} cortes</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            </div>
+
+            {/* Appointments */}
+            <div>
+              <h5 className="font-display text-lg">Historial de citas</h5>
+              {data.appointments.length === 0
+                ? <p className="mt-2 text-sm text-muted-foreground">Sin citas.</p>
+                : (
+                  <ul className="mt-3 divide-y divide-border rounded-xl border overflow-hidden">
+                    {data.appointments.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-4 px-4 py-3 bg-card">
+                        <div>
+                          <p className="text-sm font-medium">{a.serviceName ?? "Servicio"}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(a.startsAt).toLocaleString()}</p>
+                          {a.notes && <p className="text-xs text-muted-foreground italic">"{a.notes}"</p>}
+                        </div>
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] ${
+                          a.status === "completed" ? "bg-blue-100 text-blue-800"
+                          : a.status === "confirmed" ? "bg-emerald-100 text-emerald-800"
+                          : a.status === "cancelled" ? "bg-red-100 text-red-800"
+                          : "bg-amber-100 text-amber-800"
+                        }`}>{a.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- STAFF MANAGEMENT -------------------- */
+function StaffPanel({ slug }: { slug: string }) {
+  const fetchStaff = useServerFn(listStaff);
+  const upsertMember = useServerFn(upsertStaff);
+  const delMember = useServerFn(deleteStaff);
+  const qc = useQueryClient();
+
+  const q = useQuery({
+    queryKey: ["staff", slug],
+    queryFn: () => fetchStaff({ data: { slug } }),
+  });
+
+  const upsertMut = useMutation({
+    mutationFn: (member: any) => upsertMember({ data: { slug, member } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", slug] }),
+  });
+  const delMut = useMutation({
+    mutationFn: (staffId: string) => delMember({ data: { slug, staffId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", slug] }),
+  });
+
+  const [edit, setEdit] = useState<Partial<AdminStaff> | null>(null);
+  const staff = q.data ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display text-3xl">Equipo</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{staff.filter((s) => s.isActive).length} miembros activos</p>
+        </div>
+        <button onClick={() => setEdit({ fullName: "", role: "", avatarUrl: "", isActive: true })} className="btn-luxury">+ Añadir</button>
+      </div>
+
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando equipo…</p>}
+
+      {!q.isLoading && staff.length === 0 && (
+        <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground">
+          Aún no tienes miembros de equipo. ¡Agrega tu primer barbero!
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {staff.map((s) => (
+          <div key={s.id} className={`rounded-2xl border bg-card p-6 transition ${!s.isActive ? "opacity-50" : ""}`}>
+            <div className="flex items-center gap-4">
+              {s.avatarUrl
+                ? <img src={s.avatarUrl} alt={s.fullName} className="h-16 w-16 rounded-full object-cover border-2 border-[color:var(--bronze)]/20" />
+                : (
+                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[color:var(--bronze)]/20 to-[color:var(--bronze)]/5 grid place-items-center font-display text-2xl text-[color:var(--bronze)] shrink-0">
+                    {s.fullName[0]?.toUpperCase()}
+                  </div>
+                )
+              }
+              <div className="min-w-0">
+                <p className="font-display text-lg truncate">{s.fullName}</p>
+                <p className="text-xs text-muted-foreground truncate">{s.role ?? "Barbero"}</p>
+                {!s.isActive && <p className="text-xs text-red-600 mt-0.5">Inactivo</p>}
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setEdit(s)} className="rounded-full border px-3 py-1 text-xs">Editar</button>
+              <button
+                onClick={() => upsertMut.mutate({ id: s.id, full_name: s.fullName, role: s.role, avatar_url: s.avatarUrl, is_active: !s.isActive })}
+                className={`rounded-full border px-3 py-1 text-xs ${s.isActive ? "border-amber-300 text-amber-700" : "border-emerald-300 text-emerald-700"}`}
+              >
+                {s.isActive ? "Desactivar" : "Activar"}
+              </button>
+              <button onClick={() => { if (confirm(`¿Eliminar a ${s.fullName}?`)) delMut.mutate(s.id); }} className="rounded-full border border-red-300 text-red-700 px-3 py-1 text-xs">Eliminar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {edit !== null && (
+        <StaffModal
+          initial={edit}
+          submitting={upsertMut.isPending}
+          onClose={() => setEdit(null)}
+          onSubmit={async (d) => { await upsertMut.mutateAsync(d); setEdit(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function StaffModal({ initial, submitting, onClose, onSubmit }: {
+  initial: Partial<AdminStaff>;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (d: any) => Promise<void>;
+}) {
+  const [f, setF] = useState({
+    id: initial.id,
+    full_name: initial.fullName ?? "",
+    role: initial.role ?? "",
+    avatar_url: initial.avatarUrl ?? "",
+    is_active: initial.isActive ?? true,
+  });
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border bg-card p-8" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-2xl">{f.id ? "Editar miembro" : "Nuevo miembro"}</h3>
+        <div className="mt-6 grid gap-4">
+          <Field label="Nombre completo" value={f.full_name} onChange={(v) => setF({ ...f, full_name: v })} placeholder="Carlos Mendez" />
+          <Field label="Rol / Especialidad" value={f.role} onChange={(v) => setF({ ...f, role: v })} placeholder="Barbero senior, Barba specialist…" />
+          <Field label="URL de foto (opcional)" value={f.avatar_url} onChange={(v) => setF({ ...f, avatar_url: v })} placeholder="https://…" />
+          {f.avatar_url && (
+            <img src={f.avatar_url} alt="" className="h-20 w-20 rounded-full object-cover border mx-auto" />
+          )}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={f.is_active} onChange={(e) => setF({ ...f, is_active: e.target.checked })} />
+            Miembro activo (aparece en el sitio público)
+          </label>
+        </div>
+        <div className="mt-8 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Cancelar</button>
+          <button onClick={() => onSubmit(f)} disabled={submitting || !f.full_name} className="btn-luxury">
+            {submitting ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -280,6 +280,295 @@ export const deleteMembership = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/* ==================== CUSTOMERS CRM ==================== */
+
+export type AdminCustomer = {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  totalVisits: number;
+  totalSpend: number;
+  createdAt: string;
+  activeMembership: { name: string; status: string } | null;
+  lastAppointment: string | null;
+};
+
+export const listCustomers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { slug: string; search?: string }) => d)
+  .handler(async ({ context, data }): Promise<AdminCustomer[]> => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+
+    let q = context.supabase
+      .from("customers")
+      .select("id, full_name, email, phone, notes, total_visits, total_spend, created_at")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false });
+
+    const { data: customers, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const customerIds = (customers ?? []).map((c: any) => c.id);
+
+    const [subsRes, apptRes] = await Promise.all([
+      customerIds.length
+        ? context.supabase
+            .from("subscriptions")
+            .select("customer_id, status, memberships(name, business_id)")
+            .in("customer_id", customerIds)
+            .eq("status", "active")
+        : { data: [], error: null },
+      customerIds.length
+        ? context.supabase
+            .from("appointments")
+            .select("customer_id, starts_at")
+            .in("customer_id", customerIds)
+            .eq("business_id", business.id)
+            .order("starts_at", { ascending: false })
+        : { data: [], error: null },
+    ]);
+
+    if (subsRes.error) throw new Error(subsRes.error.message);
+    if (apptRes.error) throw new Error(apptRes.error.message);
+
+    // Only include subscriptions that belong to this tenant (via membership's business_id)
+    const activeSubs = new Map<string, { name: string; status: string }>();
+    for (const s of (subsRes.data ?? []) as any[]) {
+      if (s.memberships?.business_id && s.memberships.business_id !== business.id) continue;
+      if (!activeSubs.has(s.customer_id)) {
+        activeSubs.set(s.customer_id, {
+          name: s.memberships?.name ?? "Unknown",
+          status: s.status,
+        });
+      }
+    }
+
+    const lastAppt = new Map<string, string>();
+    for (const a of (apptRes.data ?? []) as any[]) {
+      if (!lastAppt.has(a.customer_id)) {
+        lastAppt.set(a.customer_id, a.starts_at);
+      }
+    }
+
+    return (customers ?? []).map((c: any) => ({
+      id: c.id,
+      fullName: c.full_name,
+      email: c.email,
+      phone: c.phone,
+      notes: c.notes,
+      totalVisits: c.total_visits,
+      totalSpend: Number(c.total_spend),
+      createdAt: c.created_at,
+      activeMembership: activeSubs.get(c.id) ?? null,
+      lastAppointment: lastAppt.get(c.id) ?? null,
+    }));
+  });
+
+export const upsertCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    slug: string;
+    customer: {
+      id?: string;
+      full_name: string;
+      email?: string | null;
+      phone?: string | null;
+      notes?: string | null;
+    };
+  }) => d)
+  .handler(async ({ context, data }) => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+
+    if (data.customer.id) {
+      const { error } = await context.supabase
+        .from("customers")
+        .update({
+          full_name: data.customer.full_name,
+          email: data.customer.email ?? null,
+          phone: data.customer.phone ?? null,
+          notes: data.customer.notes ?? null,
+        })
+        .eq("id", data.customer.id)
+        .eq("business_id", business.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await context.supabase
+        .from("customers")
+        .insert({
+          business_id: business.id,
+          full_name: data.customer.full_name,
+          email: data.customer.email ?? null,
+          phone: data.customer.phone ?? null,
+          notes: data.customer.notes ?? null,
+        });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const deleteCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { slug: string; customerId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+    const { error } = await context.supabase
+      .from("customers")
+      .delete()
+      .eq("id", data.customerId)
+      .eq("business_id", business.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getCustomerDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { slug: string; customerId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+
+    const [custRes, apptRes, subsRes] = await Promise.all([
+      context.supabase
+        .from("customers")
+        .select("*")
+        .eq("id", data.customerId)
+        .eq("business_id", business.id)
+        .maybeSingle(),
+      context.supabase
+        .from("appointments")
+        .select("id, starts_at, ends_at, status, services(name), notes")
+        .eq("customer_id", data.customerId)
+        .eq("business_id", business.id)
+        .order("starts_at", { ascending: false })
+        .limit(20),
+      context.supabase
+        .from("subscriptions")
+        .select("id, status, started_at, ends_at, cuts_used, memberships(name, price, included_cuts, business_id)")
+        .eq("customer_id", data.customerId)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (custRes.error) throw new Error(custRes.error.message);
+    if (!custRes.data) throw new Error("Customer not found");
+    if (apptRes.error) throw new Error(apptRes.error.message);
+    if (subsRes.error) throw new Error(subsRes.error.message);
+
+    return {
+      customer: custRes.data,
+      appointments: (apptRes.data ?? []).map((a: any) => ({
+        id: a.id,
+        startsAt: a.starts_at,
+        endsAt: a.ends_at,
+        status: a.status,
+        serviceName: a.services?.name ?? null,
+        notes: a.notes,
+      })),
+      subscriptions: (subsRes.data ?? [])
+        .filter((s: any) => !s.memberships?.business_id || s.memberships.business_id === business.id)
+        .map((s: any) => ({
+          id: s.id,
+          status: s.status,
+          startedAt: s.started_at,
+          endsAt: s.ends_at,
+          cutsUsed: s.cuts_used,
+          membershipName: s.memberships?.name ?? null,
+          membershipPrice: Number(s.memberships?.price ?? 0),
+          includedCuts: s.memberships?.included_cuts ?? null,
+        })),
+    };
+  });
+
+/* ==================== STAFF MANAGEMENT ==================== */
+
+export type AdminStaff = {
+  id: string;
+  fullName: string;
+  role: string | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export const listStaff = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { slug: string }) => d)
+  .handler(async ({ context, data }): Promise<AdminStaff[]> => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+    const { data: rows, error } = await context.supabase
+      .from("staff")
+      .select("id, full_name, role, avatar_url, is_active, created_at")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((s: any) => ({
+      id: s.id,
+      fullName: s.full_name,
+      role: s.role,
+      avatarUrl: s.avatar_url,
+      isActive: s.is_active,
+      createdAt: s.created_at,
+    }));
+  });
+
+export const upsertStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    slug: string;
+    member: {
+      id?: string;
+      full_name: string;
+      role?: string | null;
+      avatar_url?: string | null;
+      is_active?: boolean;
+    };
+  }) => d)
+  .handler(async ({ context, data }) => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+    const row = {
+      business_id: business.id,
+      full_name: data.member.full_name,
+      role: data.member.role ?? null,
+      avatar_url: data.member.avatar_url ?? null,
+      is_active: data.member.is_active ?? true,
+    };
+    if (data.member.id) {
+      const { error } = await context.supabase
+        .from("staff")
+        .update(row)
+        .eq("id", data.member.id)
+        .eq("business_id", business.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await context.supabase.from("staff").insert(row);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const deleteStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { slug: string; staffId: string }) => d)
+  .handler(async ({ context, data }) => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+    const { error } = await context.supabase
+      .from("staff")
+      .delete()
+      .eq("id", data.staffId)
+      .eq("business_id", business.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* ==================== ASSIGN BUSINESS OWNER ==================== */
+
 export const assignBusinessOwner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { businessId: string; email: string }) => d)

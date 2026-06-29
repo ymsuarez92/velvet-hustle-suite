@@ -1,0 +1,2 @@
+- [Lovable vite config host override](lovable-vite-host.md) — @lovable.dev/vite-tanstack-config defaults to host "::" port 8080; override via vite: { server: { host: "0.0.0.0", port: 5000 } } in defineConfig.
+- [Tenant isolation pattern](tenant-isolation.md) — All enrichment queries (appointments, subscriptions) must include .eq("business_id", business.id) even when already filtered by customer_id.

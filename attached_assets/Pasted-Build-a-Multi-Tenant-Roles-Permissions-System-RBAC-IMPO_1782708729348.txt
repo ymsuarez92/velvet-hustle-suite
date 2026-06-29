@@ -1,0 +1,406 @@
+Build a Multi-Tenant Roles & Permissions System (RBAC)
+
+IMPORTANT:
+
+This module is part of a centralized multi-tenant SaaS CRM platform for barber shops and hair salons.
+
+The platform architecture behaves similarly to:
+
+- Shopify
+- Fresha
+- Vagaro
+- enterprise SaaS platforms
+
+The system must implement:
+
+- authentication
+- authorization
+- tenant isolation
+- role-based access control (RBAC)
+- granular permissions
+
+==================================================
+CORE ACCESS CONTROL CONCEPT
+
+The platform has ONE centralized CRM.
+
+There are 3 main roles:
+
+1. super_admin
+2. owner
+3. staff
+
+IMPORTANT:
+
+The system must enforce strict tenant isolation.
+
+Only:
+
+- super_admin can access the full platform
+- owner/staff users only access their assigned tenant/business
+
+==================================================
+ROLE DEFINITIONS
+
+---
+
+1. SUPER ADMIN
+
+---
+
+There is ONLY ONE super_admin role.
+
+The super_admin controls:
+
+- the entire SaaS platform
+- all tenants
+- all users
+- all analytics
+- all memberships
+- all services
+- platform settings
+
+The super_admin can:
+
+- create tenants
+- edit tenants
+- suspend tenants
+- create owner users
+- create staff users
+- assign memberships
+- assign services
+- view all analytics
+- access audit logs
+- manage global settings
+
+IMPORTANT:
+super_admin bypasses tenant restrictions.
+
+==================================================
+2. OWNER ROLE
+
+The owner role belongs to a specific tenant/business.
+
+IMPORTANT:
+An owner MUST be assigned to:
+
+- business_id
+
+The owner ONLY manages:
+
+- their own tenant
+- their own website
+- their own customers
+- their own appointments
+- their own memberships
+- their own staff
+
+The owner cannot:
+
+- access other tenants
+- access global CRM
+- access super_admin routes
+
+==================================================
+OWNER FEATURES
+
+Owners can manage:
+
+- website CMS
+- services visibility
+- memberships visibility
+- appointments
+- schedules
+- business hours
+- customers
+- analytics
+- staff users
+
+==================================================
+3. STAFF ROLE
+
+The staff role belongs to a specific tenant/business.
+
+IMPORTANT:
+A staff user MUST be assigned to:
+
+- business_id
+
+Staff users have LIMITED permissions.
+
+The staff ONLY accesses:
+
+- allowed modules
+- allowed sections
+- assigned functionality
+
+==================================================
+GRANULAR PERMISSIONS SYSTEM
+
+The platform must support modular permissions.
+
+Permissions should be configurable per role/user.
+
+Examples of sections/modules:
+
+- dashboard
+- appointments
+- customers
+- services
+- memberships
+- analytics
+- schedules
+- website_cms
+- payments
+- staff_management
+
+==================================================
+PERMISSION ASSIGNMENT
+
+When creating/editing a role or staff user:
+
+The owner/super_admin can select:
+
+- which sections the user can access
+- which actions are allowed
+
+Example permissions:
+
+- view
+- create
+- edit
+- delete
+
+==================================================
+EXAMPLE STAFF CONFIGURATION
+
+Example:
+Staff member:
+
+- can view appointments
+- can create appointments
+- cannot delete appointments
+- cannot access analytics
+- cannot access memberships
+- cannot access billing
+
+==================================================
+ROLE ASSIGNMENT FLOW
+
+SUPER ADMIN FLOW:
+
+1. Create tenant/business
+2. Create owner user
+3. Assign owner role
+4. Assign business_id
+
+OWNER FLOW:
+
+1. Create staff user
+2. Assign staff role
+3. Select permissions/modules
+4. Assign business_id
+
+==================================================
+TENANT ISOLATION
+
+IMPORTANT:
+
+ALL queries must validate:
+
+- business_id
+- role
+- permissions
+
+Owner/staff users MUST NEVER access:
+
+- another tenant's data
+- another tenant's customers
+- another tenant's appointments
+- another tenant's memberships
+
+==================================================
+ROUTE PROTECTION
+
+The platform must protect:
+
+- pages
+- APIs
+- backend services
+
+Examples:
+
+SUPER ADMIN routes:
+
+- /crm
+- /crm/tenants
+- /crm/users
+
+TENANT routes:
+
+- /admin
+- /admin/appointments
+- /admin/customers
+
+==================================================
+AUTHENTICATION SYSTEM
+
+Implement secure authentication using:
+
+- Supabase Auth
+
+Support:
+
+- login
+- logout
+- password reset
+- secure sessions
+- protected routes
+
+==================================================
+SESSION SECURITY
+
+The system must support:
+
+- secure JWT/session handling
+- httpOnly cookies
+- role validation
+- tenant validation
+- middleware protection
+
+Never expose:
+
+- secrets
+- tokens
+- internal permissions
+
+==================================================
+PERMISSIONS UI
+
+Create a modern permissions management UI.
+
+Features:
+
+- role selector
+- permission toggles
+- grouped modules
+- search permissions
+- modern SaaS UX
+
+Use:
+
+- cards
+- switches
+- checkboxes
+- grouped sections
+
+The UI should feel similar to:
+
+- Shopify staff permissions
+- Stripe team roles
+- Notion permissions
+
+==================================================
+USER MANAGEMENT DASHBOARD
+
+The owner can:
+
+- create staff users
+- edit staff users
+- deactivate staff users
+- reset passwords
+- manage permissions
+
+Display:
+
+- user avatar
+- role
+- active status
+- permissions summary
+- last login
+
+==================================================
+AUDIT LOGS
+
+Track:
+
+- user logins
+- permission changes
+- role changes
+- admin actions
+- sensitive operations
+
+==================================================
+DATABASE STRUCTURE
+
+Create tables:
+
+users
+roles
+permissions
+role_permissions
+user_permissions
+business_users
+audit_logs
+
+IMPORTANT:
+All tenant users include:
+
+- business_id
+
+==================================================
+DESIGN REQUIREMENTS
+
+The roles/permissions system must feel:
+
+- premium
+- modern
+- enterprise SaaS quality
+- ultra clean
+- scalable
+
+Use:
+
+- modern tables
+- premium cards
+- glassmorphism
+- subtle shadows
+- elegant typography
+
+==================================================
+TECH STACK
+
+Frontend:
+
+- React
+- Next.js
+- TailwindCSS
+- TypeScript
+
+Backend:
+
+- Node.js
+- Supabase
+
+Database:
+
+- PostgreSQL
+
+Authentication:
+
+- Supabase Auth
+
+Deployment:
+
+- Replit Deployments
+
+==================================================
+FINAL PRODUCT VISION
+
+The final RBAC system should feel like:
+
+- Shopify Admin permissions
+- enterprise SaaS access control
+- modern scalable CRM authorization
+
+Integrated into a centralized multi-tenant barber shop SaaS platform.

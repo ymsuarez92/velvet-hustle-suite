@@ -1,0 +1,572 @@
+Build a Production-Ready Multi-Tenant Barber Shop SaaS CRM Platform (Replit Version)
+
+IMPORTANT:
+
+This is NOT a simple landing page project.
+
+This is a centralized MULTI-TENANT SaaS CRM platform for barber shops and hair salons.
+
+The platform dynamically manages:
+
+- multiple businesses (tenants)
+- public websites/landing pages
+- memberships/subscriptions
+- customer CRM
+- appointments
+- schedules
+- analytics
+- CMS website editing
+
+The architecture should feel similar to:
+
+- Shopify
+- Fresha
+- Vagaro
+- GlossGenius
+
+==================================================
+REPLIT REQUIREMENTS
+
+This project MUST be optimized for Replit development and deployment.
+
+Requirements:
+
+- clean architecture
+- easy local development
+- scalable folder structure
+- environment variable support
+- production-ready setup
+- responsive modern UI
+- reusable components
+
+Use:
+
+- modern TypeScript
+- modular architecture
+- scalable SaaS structure
+
+==================================================
+CORE PLATFORM ARCHITECTURE
+
+The system has 3 major layers:
+
+1. Global SaaS CRM Platform
+2. Tenant Public Websites
+3. Tenant Admin Dashboards
+
+IMPORTANT:
+
+The websites are NOT separate projects.
+
+All websites are dynamically generated from the same centralized SaaS platform and database.
+
+==================================================
+MAIN CRM PLATFORM
+
+Main routes examples:
+
+- app.domain.com
+- domain.com/crm
+- domain.com/admin
+
+The CRM route should open a LOGIN screen first.
+
+After login:
+
+- Super Admin accesses the global SaaS dashboard.
+
+==================================================
+SUPER ADMIN ROLE
+
+The Super Admin manages the ENTIRE platform.
+
+The Super Admin can:
+
+- create tenants/businesses
+- edit businesses
+- suspend businesses
+- assign plans
+- manage users
+- manage tenant owners
+- monitor analytics
+- monitor recurring revenue
+- manage memberships templates
+- manage services templates
+- view audit logs
+
+==================================================
+SUPER ADMIN DASHBOARD
+
+Create a premium modern SaaS dashboard UI.
+
+The dashboard must include:
+
+- analytics cards
+- revenue charts
+- appointments charts
+- active businesses
+- active memberships
+- customer growth
+- monthly recurring revenue
+
+Use:
+
+- glassmorphism
+- premium SaaS UI
+- subtle animations
+- elegant spacing
+- modern dashboard layout
+
+The dashboard should feel like:
+
+- Stripe Dashboard
+- Shopify Admin
+- Vercel Dashboard
+- Linear
+
+==================================================
+TENANT CREATION FLOW
+
+When the Super Admin creates a business:
+
+Example:
+
+- Business Name: Elite Barber Club
+- Slug: elitebarber
+- Owner Email
+- Plan
+
+The system automatically:
+
+1. Creates tenant/business
+2. Creates owner user
+3. Creates public website
+4. Creates admin dashboard
+
+==================================================
+TENANT WEBSITE STRUCTURE
+
+Each tenant has its own dynamic website.
+
+Examples:
+
+- elitebarber.domain.com
+- barbera.domain.com
+- barberb.domain.com
+
+IMPORTANT:
+
+The websites are NOT separate deployments.
+
+The websites are dynamically rendered from:
+
+- database content
+- CMS settings
+- tenant configuration
+
+All content is linked using:
+
+- business_id
+
+==================================================
+TENANT ADMIN DASHBOARD
+
+Each tenant has its own private admin panel.
+
+Examples:
+
+- elitebarber.domain.com/admin
+- barbera.domain.com/admin
+
+The tenant owner logs in using:
+
+- email
+- password
+
+The tenant owner ONLY manages their own business.
+
+==================================================
+ROLES SYSTEM
+
+Create role-based access control.
+
+Roles:
+
+- super_admin
+- business_admin
+- staff
+
+Permissions must be isolated by:
+
+- tenant
+- business_id
+
+==================================================
+TENANT ADMIN FEATURES
+
+---
+
+1. WEBSITE CMS
+
+---
+
+The tenant owner can edit:
+
+- homepage
+- hero section
+- services section
+- memberships section
+- gallery
+- branding
+- colors
+- typography
+- logos
+- promotions
+- contact information
+
+Changes update dynamically.
+
+No coding required.
+
+==================================================
+2. SERVICES MANAGEMENT
+
+The tenant owner can:
+
+- create services
+- edit services
+- delete services
+
+Each service includes:
+
+- title
+- description
+- duration
+- category
+- price
+- image
+
+Images must support:
+
+- local upload
+- image URL
+- cloud storage
+- Supabase Storage
+
+==================================================
+3. MEMBERSHIPS MANAGEMENT
+
+The tenant owner can:
+
+- create memberships
+- edit memberships
+- delete memberships
+
+Examples:
+
+- Gold
+- Premium
+- VIP
+
+Each membership includes:
+
+- monthly price
+- included cuts
+- perks
+- benefits
+- badges
+- image/icon
+
+The owner can view:
+
+- active subscribers
+- recurring revenue
+- membership usage
+- cuts remaining
+
+==================================================
+4. CUSTOMER CRM
+
+Each tenant has its own CRM.
+
+The tenant owner can:
+
+- view customers
+- edit customers
+- view memberships
+- view payment history
+- add notes
+- view appointments history
+
+Customer profile includes:
+
+- name
+- phone
+- email
+- active membership
+- appointments
+- visits
+- notes
+- subscription history
+
+==================================================
+5. APPOINTMENTS & SCHEDULING
+
+The platform includes a dynamic scheduling system.
+
+Customers can:
+
+- book from the website
+- select service
+- select barber
+- select date
+- select available hour
+
+Business admin can:
+
+- manually create appointments
+- edit appointments
+- cancel appointments
+- assign barber/staff
+
+==================================================
+BUSINESS HOURS CONFIGURATION
+
+The tenant owner can configure:
+
+- working days
+- opening hours
+- closing hours
+- blocked dates
+- holidays
+- breaks/lunch
+
+Example:
+Monday:
+09:00 → 18:00
+
+Saturday:
+10:00 → 15:00
+
+Sunday:
+Closed
+
+==================================================
+DYNAMIC AVAILABILITY ENGINE
+
+Available booking slots must be calculated dynamically using:
+
+- business hours
+- existing appointments
+- blocked dates
+- barber schedules
+- service duration
+
+Unavailable slots must automatically become disabled.
+
+IMPORTANT:
+Availability validation MUST happen on backend.
+
+==================================================
+WHATSAPP INTEGRATION
+
+Support:
+
+- direct WhatsApp booking
+- prefilled messages
+- future WhatsApp API integration
+
+==================================================
+MEMBERSHIP & PAYMENT FLOW
+
+Integrate Stripe subscriptions.
+
+Flow:
+
+1. Customer selects membership
+2. Backend creates Stripe Checkout Session
+3. Customer pays securely
+4. Stripe sends webhook
+5. Backend validates payment
+6. Membership activates automatically
+
+Store:
+
+- subscriptions
+- recurring payments
+- renewals
+- invoices
+- cancellations
+
+IMPORTANT:
+Never trust frontend payment status.
+
+==================================================
+LANDING PAGE DESIGN
+
+Each tenant website must feel:
+
+- ultra premium
+- luxury
+- elegant
+- modern
+- cinematic
+- startup quality
+
+Use inspiration similar to:
+
+- Apple
+- Stripe
+- Linear
+- luxury grooming brands
+
+==================================================
+DESIGN STYLE
+
+Use:
+
+- warm whites
+- champagne colors
+- charcoal accents
+- subtle gradients
+- soft shadows
+- premium typography
+- glassmorphism
+- smooth animations
+
+Avoid:
+
+- outdated UI
+- cluttered layouts
+- heavy black backgrounds
+
+==================================================
+LANDING PAGE SECTIONS
+
+Each tenant website includes:
+
+1. Hero Section
+2. Services Preview
+3. Memberships Preview
+4. Gallery
+5. Testimonials
+6. About
+7. Contact
+8. WhatsApp CTA
+9. Booking CTA
+
+==================================================
+ANALYTICS & REPORTING
+
+Tenant dashboards must show:
+
+- appointments today
+- revenue analytics
+- active memberships
+- total customers
+- booking growth
+- most requested services
+
+==================================================
+AUDIT LOGS
+
+Track:
+
+- admin logins
+- changes to services
+- appointments changes
+- membership changes
+- admin actions
+
+==================================================
+DATABASE STRUCTURE
+
+Core tables:
+
+- businesses
+- users
+- customers
+- services
+- memberships
+- subscriptions
+- payments
+- appointments
+- business_hours
+- blocked_dates
+- media
+- website_content
+- audit_logs
+
+IMPORTANT:
+ALL business-related tables must include:
+
+- business_id
+
+==================================================
+SECURITY REQUIREMENTS
+
+The platform must support:
+
+- tenant isolation
+- role-based access control
+- protected routes
+- secure authentication
+- backend validation
+- secure APIs
+- Stripe webhook validation
+- hidden environment secrets
+- audit logs
+
+Never expose:
+
+- Stripe secret keys
+- auth secrets
+- API secrets
+
+==================================================
+TECH STACK
+
+Frontend:
+
+- React
+- Next.js
+- TailwindCSS
+- TypeScript
+
+Backend:
+
+- Node.js
+- Supabase
+
+Database:
+
+- PostgreSQL
+
+Authentication:
+
+- Supabase Auth
+
+Payments:
+
+- Stripe
+
+Storage:
+
+- Supabase Storage
+
+Deployment:
+
+- Replit Deployments
+
+==================================================
+FINAL PRODUCT VISION
+
+The final product should feel like:
+
+- Shopify for barber shops
+- combined with a CRM
+- combined with a CMS
+- combined with a booking platform
+- combined with memberships/subscriptions
+
+Everything managed from one centralized premium SaaS platform.
