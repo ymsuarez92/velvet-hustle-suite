@@ -1,5 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { getPublicTenant, type PublicTenant } from "@/lib/tenants.functions";
+import { BookingDialog } from "@/components/booking-dialog";
 import {
   Scissors,
   Sparkles,
@@ -57,6 +59,15 @@ export const Route = createFileRoute("/b/$slug")({
 
 function TenantLanding() {
   const { tenant } = Route.useLoaderData();
+  const [booking, setBooking] = useState<{ open: boolean; serviceId?: string }>({ open: false });
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const ce = e as CustomEvent<{ serviceId?: string }>;
+      setBooking({ open: true, serviceId: ce.detail?.serviceId });
+    }
+    window.addEventListener("open-booking", onOpen as EventListener);
+    return () => window.removeEventListener("open-booking", onOpen as EventListener);
+  }, []);
   return (
     <main className="min-h-screen bg-background text-foreground">
       <Navbar tenant={tenant} />
@@ -69,6 +80,13 @@ function TenantLanding() {
       <Contact tenant={tenant} />
       <Footer tenant={tenant} />
       <WhatsAppFab tenant={tenant} />
+      <BookingDialog
+        open={booking.open}
+        onClose={() => setBooking({ open: false })}
+        slug={tenant.slug}
+        services={tenant.services.map((s: PublicTenant["services"][number]) => ({ id: s.id, name: s.name, durationMin: s.durationMin, price: s.price }))}
+        initialServiceId={booking.serviceId}
+      />
     </main>
   );
 }
@@ -108,9 +126,9 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
             <span className="rounded-full bg-background px-3 py-1 text-foreground">EN</span>
             <span className="px-3 py-1 text-background/70">ES</span>
           </div>
-          <a href="#book" className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
-            <MessageCircle className="h-3.5 w-3.5" /> Book
-          </a>
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
+            <Clock className="h-3.5 w-3.5" /> Book
+          </button>
           <Link
             to="/b/$slug/admin"
             params={{ slug: tenant.slug }}
@@ -147,11 +165,11 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             {tenant.hero.subtitle}
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3 animate-fade-up">
-            <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
-              <MessageCircle className="h-4 w-4" /> Book via WhatsApp <ArrowRight className="h-4 w-4" />
-            </a>
-            <a href="#services" className="inline-flex items-center gap-2 rounded-full bg-[color:var(--bronze)] px-6 py-3.5 text-sm font-medium text-[color:var(--cream)] transition hover:opacity-90">
-              Explore Services
+            <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
+              Book your visit <ArrowRight className="h-4 w-4" />
+            </button>
+            <a href={`https://wa.me/${tenant.whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[color:var(--bronze)] px-6 py-3.5 text-sm font-medium text-[color:var(--cream)] transition hover:opacity-90">
+              <MessageCircle className="h-4 w-4" /> WhatsApp
             </a>
             <a href="#memberships" className="text-sm font-medium text-foreground/75 underline-offset-4 hover:underline">
               Join Membership
@@ -237,12 +255,19 @@ function Services({ tenant }: { tenant: PublicTenant }) {
                 <span className="font-display text-xl text-[color:var(--bronze)]">${s.price}</span>
               </div>
               <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{s.description}</p>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-booking", { detail: { serviceId: s.id } }))}
+                className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-foreground/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition"
+              >
+                Book
+              </button>
             </div>
           </article>
         ))}
       </div>
       <div className="mt-12 text-center">
-        <a href="#book" className="btn-ghost-luxury">View all services</a>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="btn-ghost-luxury">Book an appointment</button>
       </div>
     </section>
   );
