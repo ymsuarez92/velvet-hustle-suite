@@ -195,20 +195,20 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
   const { t, tx } = useI18n();
   return (
     <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
-      <div className="container-luxury grid gap-10 py-12 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
-        <div className="md:col-span-6 lg:col-span-6">
+      <div className="container-luxury grid gap-10 py-12 lg:grid-cols-12 lg:gap-12 lg:py-24 xl:py-28">
+        <div className="lg:col-span-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--champagne)]/60 bg-[color:var(--champagne)]/20 px-4 py-1.5 text-xs text-foreground/80 animate-fade-up">
             <Star className="h-3.5 w-3.5 fill-[color:var(--bronze)] text-[color:var(--bronze)]" strokeWidth={0} />
             {t("hero.rated")}
           </div>
-          <h1 className="mt-6 whitespace-pre-line font-display text-[2.25rem] leading-[1.05] sm:text-[2.75rem] md:text-7xl lg:text-[5.25rem] animate-fade-up">
+          <h1 className="mt-6 whitespace-pre-line font-display text-[2.25rem] leading-[1.05] sm:text-[3rem] md:text-[3.75rem] lg:text-7xl xl:text-[5.25rem] animate-fade-up">
             {tx(tenant.hero.title).split("\n").map((line, i) => (
               <span key={i} className="block">
                 {i === 1 ? <span className="italic text-[color:var(--bronze)]">{line}</span> : line}
               </span>
             ))}
           </h1>
-          <p className="mt-6 max-w-md text-[15px] text-muted-foreground md:text-lg animate-fade-up">
+          <p className="mt-6 max-w-md text-[15px] text-muted-foreground md:max-w-lg md:text-lg animate-fade-up">
             {tx(tenant.hero.subtitle)}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center animate-fade-up">
@@ -222,7 +222,7 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
               {t("hero.join")}
             </a>
           </div>
-          <div className="mt-10 grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-background/60 backdrop-blur md:mt-12 md:grid-cols-4 md:divide-y-0">
+          <div className="mt-10 grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-background/60 backdrop-blur md:mt-12 lg:grid-cols-4 lg:divide-y-0">
             {tenant.stats.map((s) => (
               <div key={s.label} className="px-4 py-5 md:px-5 md:py-6">
                 <p className="font-display text-2xl md:text-[2rem]">{s.value}</p>
@@ -231,11 +231,11 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             ))}
           </div>
         </div>
-        <div className="relative md:col-span-6 lg:col-span-6">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-luxury)] animate-fade-in md:rounded-[2rem]">
+        <div className="relative lg:col-span-6">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-luxury)] animate-fade-in lg:rounded-[2rem]">
             <img src={tenant.hero.image} alt={tenant.name} className="h-full w-full object-cover" />
           </div>
-          <div className="absolute -bottom-6 left-4 right-4 mx-auto flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-[var(--shadow-luxury)] backdrop-blur md:left-auto md:right-6 md:max-w-[260px]">
+          <div className="absolute -bottom-6 left-4 right-4 mx-auto flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-[var(--shadow-luxury)] backdrop-blur sm:left-auto sm:right-6 sm:max-w-[260px]">
             <div className="flex -space-x-2">
               {["https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=80","https://images.pexels.com/photos/697509/pexels-photo-697509.jpeg?auto=compress&cs=tinysrgb&w=80","https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=80"].map((src) => (
                 <img key={src} src={src} alt="" className="h-9 w-9 rounded-full border-2 border-background object-cover" loading="lazy" />
