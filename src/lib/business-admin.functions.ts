@@ -98,7 +98,7 @@ export const getBusinessAdminBundle = createServerFn({ method: "GET" })
       context.supabase.from("memberships").select("*").eq("business_id", business.id).order("sort_order"),
     ]);
 
-    const c = contentRes.data ?? {};
+    const c: any = contentRes.data ?? {};
     return {
       business: {
         id: business.id,
@@ -190,13 +190,13 @@ export const updateWebsiteContent = createServerFn({ method: "POST" })
     if (existing) {
       const { error } = await context.supabase
         .from("website_content")
-        .update(data.patch)
+        .update(data.patch as any)
         .eq("business_id", data.businessId);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await context.supabase
         .from("website_content")
-        .insert({ business_id: data.businessId, ...data.patch });
+        .insert({ business_id: data.businessId, ...data.patch } as any);
       if (error) throw new Error(error.message);
     }
     return { ok: true };
