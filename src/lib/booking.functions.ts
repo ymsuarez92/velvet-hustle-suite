@@ -61,8 +61,8 @@ export const createBooking = createServerFn({ method: "POST" })
       _starts_at: data.startsAt,
       _customer_name: data.customerName,
       _customer_phone: data.customerPhone,
-      _customer_email: data.customerEmail || null,
-      _notes: data.notes || null,
+      _customer_email: data.customerEmail || undefined,
+      _notes: data.notes || undefined,
     });
     if (error) throw new Error(error.message);
     return { id: id as string };
