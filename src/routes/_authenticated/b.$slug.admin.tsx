@@ -14,6 +14,11 @@ import {
   type AdminService,
   type AdminMembership,
 } from "@/lib/business-admin.functions";
+import {
+  getSchedule, updateBusinessHours, addBlockedDate, removeBlockedDate,
+  listAppointments, updateAppointmentStatus,
+  type ScheduleBundle, type AppointmentRow,
+} from "@/lib/booking.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
@@ -33,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
   component: BusinessAdmin,
 });
 
-type Tab = "site" | "services" | "memberships" | "settings";
+type Tab = "site" | "services" | "memberships" | "schedule" | "agenda" | "settings";
 
 function BusinessAdmin() {
   const { slug } = Route.useParams();
@@ -79,11 +84,11 @@ function BusinessAdmin() {
             <button onClick={signOut} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
           </div>
         </div>
-        <nav className="container-luxury flex gap-1 pb-3">
-          {(["site","services","memberships","settings"] as Tab[]).map((t) => (
+        <nav className="container-luxury flex flex-wrap gap-1 pb-3">
+          {(["site","services","memberships","schedule","agenda","settings"] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] ${tab === t ? "bg-[color:var(--bronze)] text-white" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "site" ? "Website" : t === "services" ? "Services" : t === "memberships" ? "Memberships" : "Settings"}
+              {t === "site" ? "Website" : t === "services" ? "Services" : t === "memberships" ? "Memberships" : t === "schedule" ? "Schedule" : t === "agenda" ? "Agenda" : "Settings"}
             </button>
           ))}
         </nav>
@@ -93,6 +98,8 @@ function BusinessAdmin() {
         {tab === "site" && <SiteEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "services" && <ServicesEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "memberships" && <MembershipsEditor bundle={bundle} onSaved={() => q.refetch()} />}
+        {tab === "schedule" && <ScheduleEditor slug={slug} />}
+        {tab === "agenda" && <AgendaView slug={slug} />}
         {tab === "settings" && <SettingsEditor bundle={bundle} onSaved={() => q.refetch()} />}
       </main>
     </div>
