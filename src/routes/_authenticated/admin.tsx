@@ -19,6 +19,15 @@ import {
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 
+function buildTenantPublicUrl(slug: string): string {
+  if (typeof window === "undefined") return `/b/${slug}`;
+  const { protocol, host } = window.location;
+  // Preview hosts: id-preview--<id>.lovable.app  →  rewrite to published host project--<id>.lovable.app
+  const previewMatch = host.match(/^id-preview--([a-z0-9-]+)\.lovable\.app$/i);
+  const base = previewMatch ? `https://project--${previewMatch[1]}.lovable.app` : `${protocol}//${host}`;
+  return `${base}/b/${slug}`;
+}
+
 export const Route = createFileRoute("/_authenticated/admin")({
   component: SuperAdmin,
 });
