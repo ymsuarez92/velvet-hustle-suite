@@ -154,10 +154,27 @@ const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: TKey)
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
   useEffect(() => {
-    const saved = (typeof window !== "undefined" && (localStorage.getItem("lang") as Lang | null)) || null;
-    if (saved === "en" || saved === "es") setLangState(saved);
-    else if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("es")) setLangState("es");
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const qp = url.searchParams.get("lang");
+    const saved = localStorage.getItem("lang") as Lang | null;
+    let next: Lang | null = null;
+    if (qp === "en" || qp === "es") next = qp;
+    else if (saved === "en" || saved === "es") next = saved;
+    else if (navigator.language?.toLowerCase().startsWith("es")) next = "es";
+    if (next) setLangState(next);
   }, []);
+  // Keep <html lang> and ?lang= in sync for SEO / hreflang.
+  useEffect(() => {
+    if (typeof document !== "undefined") document.documentElement.lang = lang;
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("lang") !== lang) {
+        url.searchParams.set("lang", lang);
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, [lang]);
   const setLang = (l: Lang) => {
     setLangState(l);
     try { localStorage.setItem("lang", l); } catch {}
