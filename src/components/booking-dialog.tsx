@@ -116,7 +116,7 @@ export function BookingDialog({
                   <SelectTrigger className="h-12 w-full rounded-xl border bg-background px-4 text-sm font-medium">
                     <SelectValue placeholder={t("book.pickService")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[200]">
                     {services.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         <span className="font-medium">{s.name}</span>
@@ -159,7 +159,7 @@ export function BookingDialog({
                       <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("book.pickDate")}</span>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-auto p-0">
+                  <PopoverContent align="start" className="z-[200] w-auto p-0">
                     <Calendar
                       mode="single"
                       selected={new Date(date + "T00:00:00")}
@@ -200,7 +200,7 @@ export function BookingDialog({
                         <SelectTrigger className="h-12 w-full rounded-xl border bg-background px-4 text-sm font-medium">
                           <SelectValue placeholder={t("book.pickTime")} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[200]">
                           {slotsQ.data.map((time) => (
                             <SelectItem key={time} value={time}>{fmtTimeLoc(time)}</SelectItem>
                           ))}
