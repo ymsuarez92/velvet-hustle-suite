@@ -10,9 +10,11 @@ import {
   deleteService,
   upsertMembership,
   deleteMembership,
+  getOwnerOverview,
   type AdminPayload,
   type AdminService,
   type AdminMembership,
+  type OwnerOverview,
 } from "@/lib/business-admin.functions";
 import {
   getSchedule, updateBusinessHours, addBlockedDate, removeBlockedDate,
@@ -45,7 +47,17 @@ export const Route = createFileRoute("/_authenticated/b/$slug/admin")({
   component: BusinessAdmin,
 });
 
-type Tab = "site" | "services" | "memberships" | "schedule" | "agenda" | "settings";
+type Tab = "overview" | "site" | "services" | "memberships" | "schedule" | "agenda" | "settings";
+
+const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
+  { id: "overview",    label: "Resumen",     icon: "◆", desc: "KPIs y próximas citas" },
+  { id: "agenda",      label: "Agenda",      icon: "▦", desc: "Citas confirmadas" },
+  { id: "schedule",    label: "Horarios",    icon: "◷", desc: "Disponibilidad" },
+  { id: "services",    label: "Servicios",   icon: "✂", desc: "Catálogo y precios" },
+  { id: "memberships", label: "Membresías",  icon: "◈", desc: "Planes activos" },
+  { id: "site",        label: "Sitio web",   icon: "❖", desc: "Contenido público" },
+  { id: "settings",    label: "Ajustes",     icon: "⚙", desc: "Datos del negocio" },
+];
 
 function BusinessAdmin() {
   const { slug } = Route.useParams();
@@ -58,7 +70,7 @@ function BusinessAdmin() {
     queryFn: () => fetchBundle({ data: { slug } }),
   });
 
-  const [tab, setTab] = useState<Tab>("site");
+  const [tab, setTab] = useState<Tab>("overview");
 
   async function signOut() {
     await qc.cancelQueries();
@@ -91,17 +103,18 @@ function BusinessAdmin() {
             <button onClick={signOut} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
           </div>
         </div>
-        <nav className="container-luxury flex flex-wrap gap-1 pb-3">
-          {(["site","services","memberships","schedule","agenda","settings"] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] ${tab === t ? "bg-[color:var(--bronze)] text-white" : "text-muted-foreground hover:text-foreground"}`}>
-              {t === "site" ? "Website" : t === "services" ? "Services" : t === "memberships" ? "Memberships" : t === "schedule" ? "Schedule" : t === "agenda" ? "Agenda" : "Settings"}
+        <nav className="container-luxury -mx-2 flex gap-1 overflow-x-auto px-2 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] transition ${tab === t.id ? "bg-[color:var(--bronze)] text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"}`}>
+              <span aria-hidden className="text-sm">{t.icon}</span>{t.label}
             </button>
           ))}
         </nav>
       </header>
 
       <main className="container-luxury py-10">
+        {tab === "overview" && <OverviewPanel slug={slug} bundle={bundle} onJump={setTab} />}
         {tab === "site" && <SiteEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "services" && <ServicesEditor bundle={bundle} onSaved={() => q.refetch()} />}
         {tab === "memberships" && <MembershipsEditor bundle={bundle} onSaved={() => q.refetch()} />}
@@ -131,6 +144,112 @@ function TextArea({ label, value, onChange, rows = 3 }: { label: string; value: 
       <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)}
         className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm outline-none focus:border-[color:var(--bronze)]" />
     </label>
+  );
+}
+
+/* -------------------- OVERVIEW -------------------- */
+function fmtCurrency(n: number) {
+  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
+
+function OverviewPanel({ slug, bundle, onJump }: { slug: string; bundle: AdminPayload; onJump: (t: Tab) => void }) {
+  const fetchOverview = useServerFn(getOwnerOverview);
+  const q = useQuery({
+    queryKey: ["owner-overview", slug],
+    queryFn: () => fetchOverview({ data: { slug } }),
+  });
+
+  const o = q.data as OwnerOverview | undefined;
+
+  const cards = [
+    { label: "Ingresos estimados (30d)", value: o ? fmtCurrency(o.estimatedRevenue30d) : "—", hint: o ? `${o.completedCount30d} citas completadas` : "" },
+    { label: "Citas hoy",                 value: o ? String(o.todayCount) : "—",               hint: o ? `${o.upcomingCount} próximas` : "" },
+    { label: "Membresías activas",        value: o ? String(o.activeMemberships) : "—",        hint: o ? `MRR ${fmtCurrency(o.mrrEstimate)}` : "" },
+    { label: "Clientes nuevos (30d)",     value: o ? String(o.newCustomers30d) : "—",          hint: `${bundle.services.length} servicios · ${bundle.memberships.length} planes` },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-2xl border bg-gradient-to-br from-card to-secondary/40 p-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Bienvenido</p>
+            <h2 className="font-display text-3xl">{bundle.business.name}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Resumen del negocio en tiempo real.</p>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/b/$slug" params={{ slug }} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] hover:bg-secondary/60">Ver sitio público ↗</Link>
+            <button onClick={() => onJump("agenda")} className="btn-luxury">Abrir agenda</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-2xl border bg-card p-6">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{c.label}</p>
+            <p className="mt-3 font-display text-3xl">{q.isLoading ? <span className="inline-block h-7 w-20 animate-pulse rounded bg-secondary" /> : c.value}</p>
+            {c.hint && <p className="mt-2 text-xs text-muted-foreground">{c.hint}</p>}
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-2xl border bg-card overflow-hidden">
+          <header className="flex items-center justify-between border-b px-6 py-4">
+            <div>
+              <h3 className="font-display text-xl">Próximas citas</h3>
+              <p className="text-xs text-muted-foreground">Las siguientes 6 reservas.</p>
+            </div>
+            <button onClick={() => onJump("agenda")} className="text-xs uppercase tracking-[0.18em] text-[color:var(--bronze)]">Ver todas →</button>
+          </header>
+          {q.isLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Cargando…</div>
+          ) : !o || o.upcoming.length === 0 ? (
+            <div className="p-10 text-center text-sm text-muted-foreground">No hay citas próximas.</div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {o.upcoming.map((a) => {
+                const d = new Date(a.startsAt);
+                return (
+                  <li key={a.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-4">
+                    <div className="min-w-[64px]">
+                      <p className="font-display text-lg leading-none">{d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{d.toLocaleDateString(undefined, { day: "numeric", month: "short" })}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{a.customerName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{a.serviceName ?? "—"}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${a.status === "confirmed" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{a.status}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-2xl border bg-card p-6">
+          <h3 className="font-display text-xl">Atajos</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Acciones más usadas.</p>
+          <div className="mt-5 grid gap-2">
+            {TABS.filter((t) => t.id !== "overview").map((t) => (
+              <button key={t.id} onClick={() => onJump(t.id)}
+                className="group flex items-center justify-between rounded-xl border bg-background px-4 py-3 text-left transition hover:border-[color:var(--bronze)] hover:bg-secondary/40">
+                <span className="flex items-center gap-3">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm">{t.icon}</span>
+                  <span>
+                    <span className="block text-sm font-medium">{t.label}</span>
+                    <span className="block text-xs text-muted-foreground">{t.desc}</span>
+                  </span>
+                </span>
+                <span className="text-muted-foreground group-hover:text-[color:var(--bronze)]">→</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 

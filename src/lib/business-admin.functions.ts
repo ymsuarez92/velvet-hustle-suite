@@ -301,3 +301,88 @@ export const assignBusinessOwner = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, userId: user.id };
   });
+
+export type OwnerOverview = {
+  estimatedRevenue30d: number;
+  completedCount30d: number;
+  upcomingCount: number;
+  todayCount: number;
+  activeMemberships: number;
+  mrrEstimate: number;
+  newCustomers30d: number;
+  upcoming: {
+    id: string; startsAt: string; customerName: string;
+    serviceName: string | null; status: string;
+  }[];
+};
+
+export const getOwnerOverview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { slug: string }) => d)
+  .handler(async ({ context, data }): Promise<OwnerOverview> => {
+    const business = await loadBusinessOrThrow(context.supabase, data.slug);
+    await assertCanEdit(context, business.id);
+
+    const now = new Date();
+    const in30 = new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString();
+    const todayStart = new Date(now.toISOString().slice(0, 10) + "T00:00:00").toISOString();
+    const todayEnd = new Date(now.toISOString().slice(0, 10) + "T23:59:59").toISOString();
+
+    const [completedRes, upcomingRes, todayRes, subsRes, customersRes] = await Promise.all([
+      context.supabase
+        .from("appointments")
+        .select("id, services(price)")
+        .eq("business_id", business.id)
+        .eq("status", "completed")
+        .gte("starts_at", in30),
+      context.supabase
+        .from("appointments")
+        .select("id, starts_at, status, customer_name, services(name)")
+        .eq("business_id", business.id)
+        .in("status", ["pending", "confirmed"])
+        .gte("starts_at", now.toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(6),
+      context.supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .in("status", ["pending", "confirmed"])
+        .gte("starts_at", todayStart)
+        .lte("starts_at", todayEnd),
+      context.supabase
+        .from("subscriptions")
+        .select("id, memberships(price)")
+        .eq("business_id", business.id)
+        .eq("status", "active"),
+      context.supabase
+        .from("customers")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .gte("created_at", in30),
+    ]);
+
+    const completed = completedRes.data ?? [];
+    const revenue = completed.reduce(
+      (s: number, r: any) => s + Number(r.services?.price ?? 0), 0,
+    );
+    const subs = subsRes.data ?? [];
+    const mrr = subs.reduce((s: number, r: any) => s + Number(r.memberships?.price ?? 0), 0);
+
+    return {
+      estimatedRevenue30d: revenue,
+      completedCount30d: completed.length,
+      upcomingCount: (upcomingRes.data ?? []).length,
+      todayCount: todayRes.count ?? 0,
+      activeMemberships: subs.length,
+      mrrEstimate: mrr,
+      newCustomers30d: customersRes.count ?? 0,
+      upcoming: (upcomingRes.data ?? []).map((a: any) => ({
+        id: a.id,
+        startsAt: a.starts_at,
+        customerName: a.customer_name,
+        serviceName: a.services?.name ?? null,
+        status: a.status,
+      })),
+    };
+  });
