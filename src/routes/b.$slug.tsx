@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { getTenant, type Tenant } from "@/data/tenants";
+import { getPublicTenant, type PublicTenant } from "@/lib/tenants.functions";
 import {
   Scissors,
   Sparkles,
@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/b/$slug")({
-  head: ({ params }) => {
-    const t = getTenant(params.slug);
-    const title = t ? `${t.name} — Premium Grooming, ${t.city}` : "Maison House";
+  head: ({ loaderData }) => {
+    const t = loaderData?.tenant;
+    const title = t ? `${t.name} — Premium Grooming${t.city ? `, ${t.city}` : ""}` : "Maison House";
     const desc = t?.tagline ?? "A premium grooming experience.";
     return {
       meta: [
@@ -30,8 +30,8 @@ export const Route = createFileRoute("/b/$slug")({
       ],
     };
   },
-  loader: ({ params }) => {
-    const tenant = getTenant(params.slug);
+  loader: async ({ params }) => {
+    const tenant = await getPublicTenant({ data: { slug: params.slug } });
     if (!tenant) throw notFound();
     return { tenant };
   },
