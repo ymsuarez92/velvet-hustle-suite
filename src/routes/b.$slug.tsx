@@ -189,7 +189,7 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Hero({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   return (
     <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
       <div className="container-luxury grid gap-10 py-12 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
@@ -199,14 +199,14 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             {t("hero.rated")}
           </div>
           <h1 className="mt-6 whitespace-pre-line font-display text-[2.25rem] leading-[1.05] sm:text-[2.75rem] md:text-7xl lg:text-[5.25rem] animate-fade-up">
-            {tenant.hero.title.split("\n").map((line, i) => (
+            {tx(tenant.hero.title).split("\n").map((line, i) => (
               <span key={i} className="block">
                 {i === 1 ? <span className="italic text-[color:var(--bronze)]">{line}</span> : line}
               </span>
             ))}
           </h1>
           <p className="mt-6 max-w-md text-[15px] text-muted-foreground md:text-lg animate-fade-up">
-            {tenant.hero.subtitle}
+            {tx(tenant.hero.subtitle)}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center animate-fade-up">
             <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
@@ -223,7 +223,7 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             {tenant.stats.map((s) => (
               <div key={s.label} className="px-4 py-5 md:px-5 md:py-6">
                 <p className="font-display text-2xl md:text-[2rem]">{s.value}</p>
-                <p className="mt-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{s.label}</p>
+                <p className="mt-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{tx(s.label)}</p>
               </div>
             ))}
           </div>
@@ -250,6 +250,7 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Pillars({ tenant }: { tenant: PublicTenant }) {
+  const { tx } = useI18n();
   const map = { scissors: Scissors, sparkles: Sparkles, crown: Crown, star: Star } as const;
   return (
     <section className="border-y bg-secondary/40">
@@ -259,7 +260,7 @@ function Pillars({ tenant }: { tenant: PublicTenant }) {
           return (
             <div key={p.title} className="flex items-center gap-3 px-4 py-6 md:px-6 md:py-8">
               <Icon className="h-5 w-5 text-[color:var(--bronze)]" strokeWidth={1.4} />
-              <span className="text-xs uppercase tracking-[0.2em] text-foreground/75">{p.title}</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-foreground/75">{tx(p.title)}</span>
             </div>
           );
         })}
