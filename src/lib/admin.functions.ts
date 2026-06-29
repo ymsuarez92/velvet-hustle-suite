@@ -64,7 +64,7 @@ export const createTenant = createServerFn({ method: "POST" })
 
 export const setTenantStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string; status: "draft" | "published" | "archived" }) => d)
+  .inputValidator((d: { id: string; status: "draft" | "published" | "suspended" }) => d)
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
