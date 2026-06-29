@@ -258,20 +258,20 @@ function OverviewPanel({ slug, bundle, onJump }: { slug: string; bundle: AdminPa
         </div>
 
         <div className="rounded-2xl border bg-card p-6">
-          <h3 className="font-display text-xl">Atajos</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Acciones más usadas.</p>
-          <div className="mt-5 grid gap-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-xl">Atajos</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Salta a cualquier sección.</p>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
             {TABS.filter((t) => t.id !== "overview").map((t) => (
               <button key={t.id} onClick={() => onJump(t.id)}
-                className="group flex items-center justify-between rounded-xl border bg-background px-4 py-3 text-left transition hover:border-[color:var(--bronze)] hover:bg-secondary/40">
-                <span className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm">{t.icon}</span>
-                  <span>
-                    <span className="block text-sm font-medium">{t.label}</span>
-                    <span className="block text-xs text-muted-foreground">{t.desc}</span>
-                  </span>
-                </span>
-                <span className="text-muted-foreground group-hover:text-[color:var(--bronze)]">→</span>
+                className="group flex h-full flex-col items-start gap-2 rounded-xl border bg-background p-4 text-left transition hover:-translate-y-0.5 hover:border-[color:var(--bronze)] hover:bg-secondary/40 hover:shadow-sm">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-base">{t.icon}</span>
+                <span className="block text-sm font-medium">{t.label}</span>
+                <span className="block text-[11px] leading-snug text-muted-foreground">{t.desc}</span>
+                <span className="mt-auto pt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground group-hover:text-[color:var(--bronze)]">Abrir →</span>
               </button>
             ))}
           </div>
