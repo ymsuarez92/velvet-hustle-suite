@@ -121,17 +121,17 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
   ];
   return (
     <header className="sticky top-0 z-40 glass-nav">
-      <div className="container-luxury flex h-16 items-center justify-between md:h-20">
+      <div className="container-luxury flex h-16 items-center justify-between gap-3 lg:h-20">
         <Link to="/b/$slug" params={{ slug: tenant.slug }} className="flex min-w-0 items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-foreground text-background">
             <Crown className="h-4 w-4 text-[color:var(--champagne)]" />
           </span>
           <span className="flex min-w-0 flex-col leading-none">
-            <span className="truncate font-display text-base tracking-tight sm:text-lg md:text-xl">{tenant.name}</span>
-            <span className="mt-1 text-[9px] uppercase tracking-[0.3em] text-[color:var(--bronze)]">Barber Club</span>
+            <span className="truncate font-display text-base tracking-tight sm:text-lg lg:text-xl">{tenant.name}</span>
+            <span className="mt-1 truncate whitespace-nowrap text-[9px] uppercase tracking-[0.3em] text-[color:var(--bronze)]">Barber Club</span>
           </span>
         </Link>
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav className="hidden items-center gap-5 lg:flex xl:gap-7">
           {links.map((l) => (
             <a key={l.href} href={l.href} className="text-[13px] font-medium text-foreground/75 transition hover:text-[color:var(--bronze)]">
               {l.label}
@@ -139,41 +139,41 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden items-center rounded-full bg-foreground p-1 text-[11px] font-medium md:flex">
+          <div className="hidden items-center rounded-full bg-foreground p-1 text-[11px] font-medium lg:flex">
             <button onClick={() => setLang("en")} className={`rounded-full px-3 py-1 transition ${lang === "en" ? "bg-background text-foreground" : "text-background/70 hover:text-background"}`}>EN</button>
             <button onClick={() => setLang("es")} className={`rounded-full px-3 py-1 transition ${lang === "es" ? "bg-background text-foreground" : "text-background/70 hover:text-background"}`}>ES</button>
           </div>
-          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur lg:inline-flex">
             <Clock className="h-3.5 w-3.5" /> {t("nav.book")}
           </button>
           <Link
             to="/b/$slug/admin"
             params={{ slug: tenant.slug }}
-            className="hidden text-[11px] uppercase tracking-[0.22em] text-foreground/50 hover:text-foreground md:block"
+            className="hidden text-[11px] uppercase tracking-[0.22em] text-foreground/50 hover:text-foreground xl:block"
           >
             {t("nav.admin")}
           </Link>
-          <a href="#memberships" className="hidden items-center gap-2 rounded-full bg-[color:var(--bronze)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--cream)] transition hover:opacity-90 md:inline-flex">
+          <a href="#memberships" className="hidden items-center gap-2 rounded-full bg-[color:var(--bronze)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--cream)] transition hover:opacity-90 lg:inline-flex">
             {t("nav.join")}
           </a>
           {/* Mobile: lang pill + hamburger */}
-          <button onClick={() => setLang(lang === "en" ? "es" : "en")} className="rounded-full border border-foreground/15 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] md:hidden" aria-label="Toggle language">
+          <button onClick={() => setLang(lang === "en" ? "es" : "en")} className="rounded-full border border-foreground/15 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] lg:hidden" aria-label="Toggle language">
             {lang.toUpperCase()}
           </button>
-          <button onClick={() => setOpen((v) => !v)} aria-label="Menu" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 md:hidden">
+          <button onClick={() => setOpen((v) => !v)} aria-label="Menu" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 lg:hidden">
             <Menu className="h-4 w-4" />
           </button>
         </div>
       </div>
       {open && (
-        <div className="border-t border-foreground/10 bg-background/95 backdrop-blur md:hidden">
+        <div className="border-t border-foreground/10 bg-background/95 backdrop-blur lg:hidden">
           <nav className="container-luxury flex flex-col py-3">
             {links.map((l) => (
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="py-3 text-sm font-medium text-foreground/80">
                 {l.label}
               </a>
             ))}
-            <div className="mt-2 flex gap-2 pt-3 border-t border-foreground/10">
+            <div className="mt-2 flex flex-col gap-2 pt-3 border-t border-foreground/10 sm:flex-row">
               <button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent("open-booking")); }} className="flex-1 rounded-full bg-foreground px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-background">
                 {t("nav.book")}
               </button>
@@ -181,6 +181,9 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
                 {t("nav.join")}
               </a>
             </div>
+            <Link to="/b/$slug/admin" params={{ slug: tenant.slug }} onClick={() => setOpen(false)} className="mt-3 block text-center text-[11px] uppercase tracking-[0.22em] text-foreground/50">
+              {t("nav.admin")}
+            </Link>
           </nav>
         </div>
       )}
@@ -192,20 +195,20 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
   const { t, tx } = useI18n();
   return (
     <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
-      <div className="container-luxury grid gap-10 py-12 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
-        <div className="md:col-span-6 lg:col-span-6">
+      <div className="container-luxury grid gap-10 py-12 lg:grid-cols-12 lg:gap-12 lg:py-24 xl:py-28">
+        <div className="lg:col-span-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--champagne)]/60 bg-[color:var(--champagne)]/20 px-4 py-1.5 text-xs text-foreground/80 animate-fade-up">
             <Star className="h-3.5 w-3.5 fill-[color:var(--bronze)] text-[color:var(--bronze)]" strokeWidth={0} />
             {t("hero.rated")}
           </div>
-          <h1 className="mt-6 whitespace-pre-line font-display text-[2.25rem] leading-[1.05] sm:text-[2.75rem] md:text-7xl lg:text-[5.25rem] animate-fade-up">
+          <h1 className="mt-6 whitespace-pre-line font-display text-[2.25rem] leading-[1.05] sm:text-[3rem] md:text-[3.75rem] lg:text-7xl xl:text-[5.25rem] animate-fade-up">
             {tx(tenant.hero.title).split("\n").map((line, i) => (
               <span key={i} className="block">
                 {i === 1 ? <span className="italic text-[color:var(--bronze)]">{line}</span> : line}
               </span>
             ))}
           </h1>
-          <p className="mt-6 max-w-md text-[15px] text-muted-foreground md:text-lg animate-fade-up">
+          <p className="mt-6 max-w-md text-[15px] text-muted-foreground md:max-w-lg md:text-lg animate-fade-up">
             {tx(tenant.hero.subtitle)}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center animate-fade-up">
@@ -219,7 +222,7 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
               {t("hero.join")}
             </a>
           </div>
-          <div className="mt-10 grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-background/60 backdrop-blur md:mt-12 md:grid-cols-4 md:divide-y-0">
+          <div className="mt-10 grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-background/60 backdrop-blur md:mt-12 lg:grid-cols-4 lg:divide-y-0">
             {tenant.stats.map((s) => (
               <div key={s.label} className="px-4 py-5 md:px-5 md:py-6">
                 <p className="font-display text-2xl md:text-[2rem]">{s.value}</p>
@@ -228,11 +231,11 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             ))}
           </div>
         </div>
-        <div className="relative md:col-span-6 lg:col-span-6">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-luxury)] animate-fade-in md:rounded-[2rem]">
+        <div className="relative lg:col-span-6">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-[var(--shadow-luxury)] animate-fade-in lg:rounded-[2rem]">
             <img src={tenant.hero.image} alt={tenant.name} className="h-full w-full object-cover" />
           </div>
-          <div className="absolute -bottom-6 left-4 right-4 mx-auto flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-[var(--shadow-luxury)] backdrop-blur md:left-auto md:right-6 md:max-w-[260px]">
+          <div className="absolute -bottom-6 left-4 right-4 mx-auto flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-[var(--shadow-luxury)] backdrop-blur sm:left-auto sm:right-6 sm:max-w-[260px]">
             <div className="flex -space-x-2">
               {["https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=80","https://images.pexels.com/photos/697509/pexels-photo-697509.jpeg?auto=compress&cs=tinysrgb&w=80","https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=80"].map((src) => (
                 <img key={src} src={src} alt="" className="h-9 w-9 rounded-full border-2 border-background object-cover" loading="lazy" />
@@ -254,7 +257,7 @@ function Pillars({ tenant }: { tenant: PublicTenant }) {
   const map = { scissors: Scissors, sparkles: Sparkles, crown: Crown, star: Star } as const;
   return (
     <section className="border-y bg-secondary/40">
-      <div className="container-luxury grid grid-cols-2 divide-x divide-border md:grid-cols-4">
+      <div className="container-luxury grid grid-cols-2 divide-x divide-y divide-border md:divide-y-0 lg:grid-cols-4">
         {tenant.pillars.map((p) => {
           const Icon = map[p.icon as keyof typeof map] ?? Star;
           return (
@@ -405,7 +408,7 @@ function Memberships({ tenant }: { tenant: PublicTenant }) {
               key={m.id}
               className={`relative rounded-2xl border p-6 transition md:p-8 ${
                 m.highlight
-                  ? "border-[color:var(--bronze)] bg-card text-foreground shadow-[var(--shadow-champagne)] md:-translate-y-3"
+                  ? "border-[color:var(--bronze)] bg-card text-foreground shadow-[var(--shadow-champagne)] lg:-translate-y-3"
                   : "border-border bg-card/70 text-foreground backdrop-blur hover:border-[color:var(--champagne)]"
               }`}
             >
