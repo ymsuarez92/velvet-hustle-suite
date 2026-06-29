@@ -126,9 +126,9 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
             <span className="rounded-full bg-background px-3 py-1 text-foreground">EN</span>
             <span className="px-3 py-1 text-background/70">ES</span>
           </div>
-          <a href="#book" className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
-            <MessageCircle className="h-3.5 w-3.5" /> Book
-          </a>
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
+            <Clock className="h-3.5 w-3.5" /> Book
+          </button>
           <Link
             to="/b/$slug/admin"
             params={{ slug: tenant.slug }}
@@ -260,7 +260,7 @@ function Services({ tenant }: { tenant: PublicTenant }) {
         ))}
       </div>
       <div className="mt-12 text-center">
-        <a href="#book" className="btn-ghost-luxury">View all services</a>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="btn-ghost-luxury">Book an appointment</button>
       </div>
     </section>
   );
