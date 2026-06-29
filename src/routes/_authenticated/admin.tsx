@@ -485,7 +485,10 @@ function CreateUserModal({ tenants, submitting, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (f: { email: string; password: string; role: "super_admin"|"business_admin"|"staff"; businessId?: string | null }) => Promise<void>;
 }) {
-  const [f, setF] = useState({ email: "", password: "", role: "business_admin" as const, businessId: tenants[0]?.id ?? "" });
+  type Role = "super_admin" | "business_admin" | "staff";
+  const [f, setF] = useState<{ email: string; password: string; role: Role; businessId: string }>({
+    email: "", password: "", role: "business_admin", businessId: tenants[0]?.id ?? "",
+  });
   return (
     <Modal onClose={onClose} title="Create user">
       <div className="space-y-4">
