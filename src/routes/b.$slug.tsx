@@ -257,7 +257,7 @@ function Pillars({ tenant }: { tenant: PublicTenant }) {
   const map = { scissors: Scissors, sparkles: Sparkles, crown: Crown, star: Star } as const;
   return (
     <section className="border-y bg-secondary/40">
-      <div className="container-luxury grid grid-cols-2 divide-x divide-border md:grid-cols-4">
+      <div className="container-luxury grid grid-cols-2 divide-x divide-y divide-border md:divide-y-0 lg:grid-cols-4">
         {tenant.pillars.map((p) => {
           const Icon = map[p.icon as keyof typeof map] ?? Star;
           return (
@@ -408,7 +408,7 @@ function Memberships({ tenant }: { tenant: PublicTenant }) {
               key={m.id}
               className={`relative rounded-2xl border p-6 transition md:p-8 ${
                 m.highlight
-                  ? "border-[color:var(--bronze)] bg-card text-foreground shadow-[var(--shadow-champagne)] md:-translate-y-3"
+                  ? "border-[color:var(--bronze)] bg-card text-foreground shadow-[var(--shadow-champagne)] lg:-translate-y-3"
                   : "border-border bg-card/70 text-foreground backdrop-blur hover:border-[color:var(--champagne)]"
               }`}
             >
