@@ -641,7 +641,7 @@ function timeAgo(iso: string) {
 
 /* ============== TENANTS ============== */
 
-function TenantsSection() {
+function TenantsSection({ externalSearch = "" }: { externalSearch?: string }) {
   const qc = useQueryClient();
   const list = useServerFn(listAllTenants);
   const create = useServerFn(createTenant);
@@ -665,19 +665,74 @@ function TenantsSection() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [edit, setEdit] = useState<AdminTenant | null>(null);
+  const [localSearch, setLocalSearch] = useState("");
+  const effectiveSearch = (externalSearch || localSearch).trim().toLowerCase();
+  const filtered = (tQ.data ?? []).filter((t) =>
+    !effectiveSearch
+      ? true
+      : t.name.toLowerCase().includes(effectiveSearch)
+        || t.slug.toLowerCase().includes(effectiveSearch)
+        || (t.city ?? "").toLowerCase().includes(effectiveSearch),
+  );
 
   return (
     <div className="space-y-6 max-w-7xl">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <p className="eyebrow">Tenants</p>
-          <h1 className="font-display text-4xl mt-2">{tQ.data?.length ?? 0} houses</h1>
+          <h1 className="font-display text-4xl mt-2">{filtered.length} / {tQ.data?.length ?? 0} houses</h1>
           <p className="mt-2 text-sm text-muted-foreground">Provision, edit, suspend or remove barber shops.</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-luxury">+ New tenant</button>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="flex items-center gap-2 rounded-full border bg-white px-4 py-2">
+        <Search className="h-4 w-4 text-neutral-400" />
+        <input
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          placeholder={externalSearch ? `Buscando “${externalSearch}”…` : "Buscar por nombre, slug o ciudad…"}
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400"
+        />
+        {(localSearch || externalSearch) && (
+          <button onClick={() => setLocalSearch("")} className="text-xs text-neutral-500">Limpiar</button>
+        )}
+      </div>
+
+      {/* Mobile cards */}
+      <div className="grid gap-3 md:hidden">
+        {tQ.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+        {!tQ.isLoading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Sin resultados.</p>}
+        {filtered.map((t) => (
+          <div key={t.id} className="rounded-2xl border bg-card p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{t.name}</p>
+                <p className="text-xs text-muted-foreground truncate">/b/{t.slug} · {t.city ?? "—"}</p>
+              </div>
+              <StatusPill status={t.status} />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div><p className="text-muted-foreground">Plan</p><p className="capitalize">{t.subscriptionPlan}</p></div>
+              <div><p className="text-muted-foreground">MRR</p><p>${t.metrics.mrr.toFixed(0)}</p></div>
+              <div><p className="text-muted-foreground">Miembros</p><p>{t.metrics.members}</p></div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <a href={buildTenantPublicUrl(t.slug)} target="_blank" rel="noreferrer" className="rounded-full border border-[color:var(--bronze)] px-3 py-1.5 text-xs text-[color:var(--bronze)]">Ver sitio ↗</a>
+              <Link to="/b/$slug/admin" params={{ slug: t.slug }} className="rounded-full border px-3 py-1.5 text-xs">Admin</Link>
+              <button onClick={() => setEdit(t)} className="rounded-full border px-3 py-1.5 text-xs">Editar</button>
+              {t.status === "published" ? (
+                <button onClick={() => statusMut.mutate({ id: t.id, status: "draft" })} className="rounded-full border px-3 py-1.5 text-xs">Despublicar</button>
+              ) : (
+                <button onClick={() => statusMut.mutate({ id: t.id, status: "published" })} className="rounded-full bg-[color:var(--bronze)] px-3 py-1.5 text-xs text-white">Publicar</button>
+              )}
+              <button onClick={() => { if (confirm(`Eliminar “${t.name}” permanentemente? Se borrarán todos sus datos.`)) delMut.mutate(t.id); }} className="rounded-full border border-red-300 px-3 py-1.5 text-xs text-red-700">Eliminar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
@@ -692,8 +747,8 @@ function TenantsSection() {
           </thead>
           <tbody>
             {tQ.isLoading && <tr><td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">Loading…</td></tr>}
-            {tQ.data?.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">No tenants yet.</td></tr>}
-            {tQ.data?.map((t) => (
+            {!tQ.isLoading && filtered.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">Sin resultados.</td></tr>}
+            {filtered.map((t) => (
               <tr key={t.id} className="border-t">
                 <td className="px-5 py-4">
                   <div className="font-medium">{t.name}</div>
