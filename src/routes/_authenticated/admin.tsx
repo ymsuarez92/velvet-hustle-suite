@@ -11,10 +11,11 @@ import {
 import {
   listAllTenants, createTenant, updateTenant, setTenantStatus, deleteTenant,
   getPlatformStats, listPlatformUsers, createPlatformUser, resetUserPassword, deletePlatformUser,
+  setUserRoles,
   listServiceTemplates, upsertServiceTemplate, deleteServiceTemplate,
   listMembershipTemplates, upsertMembershipTemplate, deleteMembershipTemplate,
   applyTemplatesToTenant, listAuditLogs,
-  type AdminTenant, type ServiceTemplate, type MembershipTemplate,
+  type AdminTenant, type ServiceTemplate, type MembershipTemplate, type PlatformUser,
 } from "@/lib/admin.functions";
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
