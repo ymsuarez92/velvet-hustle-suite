@@ -161,9 +161,48 @@ export const deleteTenant = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Snapshot tenant for audit + existence check
+    const { data: tenant, error: tErr } = await supabaseAdmin
+      .from("businesses")
+      .select("id, slug, name")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!tenant) throw new Error("Tenant no encontrado");
+
+    // Prevent deleting a tenant the current user is owner/staff of (active tenant)
+    const { data: ownRole, error: rErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", context.userId)
+      .eq("business_id", data.id)
+      .in("role", ["business_admin", "staff"])
+      .limit(1);
+    if (rErr) throw new Error(rErr.message);
+    if ((ownRole ?? []).length > 0) {
+      throw new Error("No puedes eliminar un tenant del que eres miembro. Quítate el rol primero.");
+    }
+
+    // Prevent deleting the last tenant on the platform
+    const { count, error: cErr } = await supabaseAdmin
+      .from("businesses")
+      .select("id", { count: "exact", head: true });
+    if (cErr) throw new Error(cErr.message);
+    if ((count ?? 0) <= 1) {
+      throw new Error("No puedes eliminar el último tenant de la plataforma.");
+    }
+
     const { error } = await supabaseAdmin.from("businesses").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    await logAudit({ actorUserId: context.userId, businessId: data.id, action: "tenant.delete", entity: "business", entityId: data.id });
+    await logAudit({
+      actorUserId: context.userId,
+      businessId: data.id,
+      action: "tenant.delete",
+      entity: "business",
+      entityId: data.id,
+      metadata: { slug: tenant.slug, name: tenant.name },
+    });
     return { ok: true };
   });
 
