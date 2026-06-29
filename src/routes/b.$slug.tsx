@@ -121,17 +121,17 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
   ];
   return (
     <header className="sticky top-0 z-40 glass-nav">
-      <div className="container-luxury flex h-16 items-center justify-between md:h-20">
+      <div className="container-luxury flex h-16 items-center justify-between gap-3 lg:h-20">
         <Link to="/b/$slug" params={{ slug: tenant.slug }} className="flex min-w-0 items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-foreground text-background">
             <Crown className="h-4 w-4 text-[color:var(--champagne)]" />
           </span>
           <span className="flex min-w-0 flex-col leading-none">
-            <span className="truncate font-display text-base tracking-tight sm:text-lg md:text-xl">{tenant.name}</span>
-            <span className="mt-1 text-[9px] uppercase tracking-[0.3em] text-[color:var(--bronze)]">Barber Club</span>
+            <span className="truncate font-display text-base tracking-tight sm:text-lg lg:text-xl">{tenant.name}</span>
+            <span className="mt-1 truncate whitespace-nowrap text-[9px] uppercase tracking-[0.3em] text-[color:var(--bronze)]">Barber Club</span>
           </span>
         </Link>
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav className="hidden items-center gap-5 lg:flex xl:gap-7">
           {links.map((l) => (
             <a key={l.href} href={l.href} className="text-[13px] font-medium text-foreground/75 transition hover:text-[color:var(--bronze)]">
               {l.label}
@@ -139,41 +139,41 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden items-center rounded-full bg-foreground p-1 text-[11px] font-medium md:flex">
+          <div className="hidden items-center rounded-full bg-foreground p-1 text-[11px] font-medium lg:flex">
             <button onClick={() => setLang("en")} className={`rounded-full px-3 py-1 transition ${lang === "en" ? "bg-background text-foreground" : "text-background/70 hover:text-background"}`}>EN</button>
             <button onClick={() => setLang("es")} className={`rounded-full px-3 py-1 transition ${lang === "es" ? "bg-background text-foreground" : "text-background/70 hover:text-background"}`}>ES</button>
           </div>
-          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur md:inline-flex">
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="hidden items-center gap-2 rounded-full border border-foreground/15 bg-background/80 px-4 py-2 text-xs font-medium backdrop-blur lg:inline-flex">
             <Clock className="h-3.5 w-3.5" /> {t("nav.book")}
           </button>
           <Link
             to="/b/$slug/admin"
             params={{ slug: tenant.slug }}
-            className="hidden text-[11px] uppercase tracking-[0.22em] text-foreground/50 hover:text-foreground md:block"
+            className="hidden text-[11px] uppercase tracking-[0.22em] text-foreground/50 hover:text-foreground xl:block"
           >
             {t("nav.admin")}
           </Link>
-          <a href="#memberships" className="hidden items-center gap-2 rounded-full bg-[color:var(--bronze)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--cream)] transition hover:opacity-90 md:inline-flex">
+          <a href="#memberships" className="hidden items-center gap-2 rounded-full bg-[color:var(--bronze)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--cream)] transition hover:opacity-90 lg:inline-flex">
             {t("nav.join")}
           </a>
           {/* Mobile: lang pill + hamburger */}
-          <button onClick={() => setLang(lang === "en" ? "es" : "en")} className="rounded-full border border-foreground/15 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] md:hidden" aria-label="Toggle language">
+          <button onClick={() => setLang(lang === "en" ? "es" : "en")} className="rounded-full border border-foreground/15 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] lg:hidden" aria-label="Toggle language">
             {lang.toUpperCase()}
           </button>
-          <button onClick={() => setOpen((v) => !v)} aria-label="Menu" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 md:hidden">
+          <button onClick={() => setOpen((v) => !v)} aria-label="Menu" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 lg:hidden">
             <Menu className="h-4 w-4" />
           </button>
         </div>
       </div>
       {open && (
-        <div className="border-t border-foreground/10 bg-background/95 backdrop-blur md:hidden">
+        <div className="border-t border-foreground/10 bg-background/95 backdrop-blur lg:hidden">
           <nav className="container-luxury flex flex-col py-3">
             {links.map((l) => (
               <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="py-3 text-sm font-medium text-foreground/80">
                 {l.label}
               </a>
             ))}
-            <div className="mt-2 flex gap-2 pt-3 border-t border-foreground/10">
+            <div className="mt-2 flex flex-col gap-2 pt-3 border-t border-foreground/10 sm:flex-row">
               <button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent("open-booking")); }} className="flex-1 rounded-full bg-foreground px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-background">
                 {t("nav.book")}
               </button>
@@ -181,6 +181,9 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
                 {t("nav.join")}
               </a>
             </div>
+            <Link to="/b/$slug/admin" params={{ slug: tenant.slug }} onClick={() => setOpen(false)} className="mt-3 block text-center text-[11px] uppercase tracking-[0.22em] text-foreground/50">
+              {t("nav.admin")}
+            </Link>
           </nav>
         </div>
       )}
