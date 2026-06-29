@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BSlugRouteImport } from './routes/b.$slug'
 import { Route as BSlugAdminRouteImport } from './routes/b.$slug.admin'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,35 +37,46 @@ const BSlugAdminRoute = BSlugAdminRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/b/$slug': typeof BSlugRouteWithChildren
   '/b/$slug/admin': typeof BSlugAdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/b/$slug': typeof BSlugRouteWithChildren
   '/b/$slug/admin': typeof BSlugAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/b/$slug': typeof BSlugRouteWithChildren
   '/b/$slug/admin': typeof BSlugAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/b/$slug' | '/b/$slug/admin'
+  fullPaths: '/' | '/auth' | '/b/$slug' | '/b/$slug/admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/b/$slug' | '/b/$slug/admin'
-  id: '__root__' | '/' | '/b/$slug' | '/b/$slug/admin'
+  to: '/' | '/auth' | '/b/$slug' | '/b/$slug/admin'
+  id: '__root__' | '/' | '/auth' | '/b/$slug' | '/b/$slug/admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   BSlugRoute: typeof BSlugRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -96,6 +113,7 @@ const BSlugRouteWithChildren = BSlugRoute._addFileChildren(BSlugRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   BSlugRoute: BSlugRouteWithChildren,
 }
 export const routeTree = rootRouteImport
