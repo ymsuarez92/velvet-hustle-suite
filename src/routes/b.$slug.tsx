@@ -1,5 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { getPublicTenant, type PublicTenant } from "@/lib/tenants.functions";
+import { BookingDialog } from "@/components/booking-dialog";
 import {
   Scissors,
   Sparkles,
@@ -57,6 +59,15 @@ export const Route = createFileRoute("/b/$slug")({
 
 function TenantLanding() {
   const { tenant } = Route.useLoaderData();
+  const [booking, setBooking] = useState<{ open: boolean; serviceId?: string }>({ open: false });
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const ce = e as CustomEvent<{ serviceId?: string }>;
+      setBooking({ open: true, serviceId: ce.detail?.serviceId });
+    }
+    window.addEventListener("open-booking", onOpen as EventListener);
+    return () => window.removeEventListener("open-booking", onOpen as EventListener);
+  }, []);
   return (
     <main className="min-h-screen bg-background text-foreground">
       <Navbar tenant={tenant} />
@@ -69,6 +80,13 @@ function TenantLanding() {
       <Contact tenant={tenant} />
       <Footer tenant={tenant} />
       <WhatsAppFab tenant={tenant} />
+      <BookingDialog
+        open={booking.open}
+        onClose={() => setBooking({ open: false })}
+        slug={tenant.slug}
+        services={tenant.services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin, price: s.price }))}
+        initialServiceId={booking.serviceId}
+      />
     </main>
   );
 }
