@@ -15,6 +15,7 @@ import {
   listServiceTemplates, upsertServiceTemplate, deleteServiceTemplate,
   listMembershipTemplates, upsertMembershipTemplate, deleteMembershipTemplate,
   applyTemplatesToTenant, listAuditLogs,
+  listAllAppointments, listAllMemberships, listAllServices, listAllBusinessHours,
   type AdminTenant, type ServiceTemplate, type MembershipTemplate, type PlatformUser,
 } from "@/lib/admin.functions";
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: SuperAdmin,
 });
 
-type Section = "overview" | "tenants" | "users" | "templates" | "audit";
+type Section = "overview" | "tenants" | "users" | "memberships" | "services" | "appointments" | "hours" | "templates" | "audit";
 
 type NavItem = { id: Section; label: string; Icon: React.ComponentType<{ className?: string }>; soon?: boolean };
 const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
@@ -54,21 +55,10 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
     items: [
       { id: "tenants", label: "Tenants (Negocios)", Icon: Store },
       { id: "users", label: "Usuarios", Icon: Users2 },
-      { id: "tenants", label: "Planes & Suscripciones", Icon: CreditCard, soon: true },
-      { id: "tenants", label: "Pagos & Facturación", Icon: Receipt, soon: true },
-      { id: "tenants", label: "Cupones", Icon: Ticket, soon: true },
-      { id: "audit", label: "Notificaciones", Icon: Bell, soon: true },
-      { id: "overview", label: "Configuraciones", Icon: Settings, soon: true },
-    ],
-  },
-  {
-    title: "Reportes",
-    items: [
-      { id: "overview", label: "Analytics Global", Icon: BarChart3 },
-      { id: "overview", label: "Ingresos", Icon: TrendingUp },
-      { id: "templates", label: "Membresías", Icon: Crown },
-      { id: "tenants", label: "Citas", Icon: Calendar, soon: true },
-      { id: "users", label: "Clientes", Icon: UserCircle2, soon: true },
+      { id: "memberships", label: "Membresías", Icon: Crown },
+      { id: "services", label: "Servicios", Icon: PenSquare },
+      { id: "appointments", label: "Agendas", Icon: Calendar },
+      { id: "hours", label: "Horarios", Icon: Settings },
     ],
   },
   {
@@ -76,7 +66,6 @@ const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
     items: [
       { id: "templates", label: "Plantillas de Servicios", Icon: FileText },
       { id: "templates", label: "Plantillas de Membresías", Icon: Library },
-      { id: "templates", label: "Recursos", Icon: Folder, soon: true },
       { id: "audit", label: "Logs de Actividad", Icon: ScrollText },
     ],
   },
@@ -210,9 +199,13 @@ function SuperAdmin() {
         </header>
 
         <main className="px-4 sm:px-6 lg:px-10 py-5 sm:py-6 lg:py-8 flex-1 animate-fade-in">
-          {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : "Dashboard"); }} />}
+          {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : s === "memberships" ? "Membresías" : s === "services" ? "Servicios" : s === "appointments" ? "Agendas" : s === "hours" ? "Horarios" : "Dashboard"); }} />}
           {section === "tenants" && <TenantsSection />}
           {section === "users" && <UsersSection />}
+          {section === "memberships" && <MembershipsGlobalSection />}
+          {section === "services" && <ServicesGlobalSection />}
+          {section === "appointments" && <AppointmentsGlobalSection />}
+          {section === "hours" && <HoursGlobalSection />}
           {section === "templates" && <TemplatesSection />}
           {section === "audit" && <AuditSection />}
         </main>
