@@ -375,10 +375,10 @@ function Contact({ tenant }: { tenant: PublicTenant }) {
           </div>
 
           <dl className="mt-12 space-y-5 border-t pt-8 text-sm">
-            <Row icon={<MapPin className="h-4 w-4" />} label="Address" value={tenant.address} />
-            <Row icon={<Phone className="h-4 w-4" />} label="Phone" value={tenant.phone} />
-            <Row icon={<Instagram className="h-4 w-4" />} label="Instagram" value={tenant.instagram} />
-            <Row icon={<Mail className="h-4 w-4" />} label="Email" value={tenant.email} />
+            <Row icon={<MapPin className="h-4 w-4" />} label="Address" value={tenant.address ?? "—"} />
+            <Row icon={<Phone className="h-4 w-4" />} label="Phone" value={tenant.phone ?? "—"} />
+            <Row icon={<Instagram className="h-4 w-4" />} label="Instagram" value={tenant.instagram ?? "—"} />
+            <Row icon={<Mail className="h-4 w-4" />} label="Email" value={tenant.email ?? "—"} />
           </dl>
         </div>
 
