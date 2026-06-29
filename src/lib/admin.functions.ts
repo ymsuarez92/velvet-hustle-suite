@@ -273,15 +273,15 @@ export const getPlatformStats = createServerFn({ method: "GET" })
     // Expiring subscriptions (next 14 days)
     const bizName = new Map<string, string>();
     for (const b of businesses) bizName.set(b.id as string, b.name as string);
-    const now = Date.now();
-    const horizon = now + 14 * 86400_000;
+    const nowMs = Date.now();
+    const horizon = nowMs + 14 * 86400_000;
     const expiringSubscriptions = ((subs.data ?? []) as any[])
-      .filter((s) => s.status === "active" && s.ends_at && new Date(s.ends_at).getTime() <= horizon && new Date(s.ends_at).getTime() >= now)
+      .filter((s) => s.status === "active" && s.ends_at && new Date(s.ends_at).getTime() <= horizon && new Date(s.ends_at).getTime() >= nowMs)
       .map((s) => ({
         id: s.business_id as string,
         businessName: bizName.get(s.business_id as string) ?? "—",
         tier: memTier.get(s.membership_id as string) ?? "Plan",
-        daysLeft: Math.max(0, Math.ceil((new Date(s.ends_at).getTime() - now) / 86400_000)),
+        daysLeft: Math.max(0, Math.ceil((new Date(s.ends_at).getTime() - nowMs) / 86400_000)),
       }))
       .slice(0, 5);
 
