@@ -466,20 +466,36 @@ function Gallery({ tenant }: { tenant: PublicTenant }) {
 
 function Testimonials({ tenant }: { tenant: PublicTenant }) {
   const { t, tx } = useI18n();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   const items = tenant.testimonials;
   const count = items.length;
-  const go = (n: number) => setIdx((n + count) % count);
+  const scrollTo = (i: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = ((i % count) + count) % count;
+    el.scrollTo({ left: target * el.clientWidth, behavior: "smooth" });
+  };
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    if (i !== idx) setIdx(i);
+  };
   return (
     <section id="testimonials" className="bg-secondary/50 py-16 md:py-32">
       <div className="container-luxury">
         <SectionHeader eyebrow={t("testimonials.eyebrow")} title={t("testimonials.title")} />
         {/* Mobile carousel */}
         <div className="mt-10 md:hidden">
-          <div className="overflow-hidden">
-            <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${idx * 100}%)` }}>
+          <div
+            ref={scrollRef}
+            onScroll={onScroll}
+            className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y pinch-zoom" }}
+          >
               {items.map((tt) => (
-                <figure key={tt.name} className="w-full shrink-0 px-1">
+                <figure key={tt.name} className="w-full shrink-0 snap-center pr-3">
                   <div className="flex h-full flex-col rounded-2xl border bg-card p-6 shadow-[var(--shadow-soft)]">
                     <div className="flex gap-0.5 text-[color:var(--champagne)]">
                       {Array.from({ length: tt.rating }).map((_, i) => (
@@ -494,18 +510,17 @@ function Testimonials({ tenant }: { tenant: PublicTenant }) {
                   </div>
                 </figure>
               ))}
-            </div>
           </div>
           <div className="mt-5 flex items-center justify-between">
-            <button onClick={() => go(idx - 1)} aria-label="Previous" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 bg-background">
+            <button onClick={() => scrollTo(idx - 1)} aria-label="Previous" className="grid h-11 w-11 place-items-center rounded-full border border-foreground/15 bg-background active:scale-95 transition">
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="flex gap-2">
               {items.map((_, i) => (
-                <button key={i} onClick={() => setIdx(i)} aria-label={`Slide ${i + 1}`} className={`h-1.5 rounded-full transition-all ${i === idx ? "w-8 bg-[color:var(--bronze)]" : "w-1.5 bg-foreground/20"}`} />
+                <button key={i} onClick={() => scrollTo(i)} aria-label={`Slide ${i + 1}`} className={`h-2 rounded-full transition-all ${i === idx ? "w-8 bg-[color:var(--bronze)]" : "w-2 bg-foreground/20"}`} />
               ))}
             </div>
-            <button onClick={() => go(idx + 1)} aria-label="Next" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 bg-background">
+            <button onClick={() => scrollTo(idx + 1)} aria-label="Next" className="grid h-11 w-11 place-items-center rounded-full border border-foreground/15 bg-background active:scale-95 transition">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
