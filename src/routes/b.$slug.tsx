@@ -189,7 +189,7 @@ function Navbar({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Hero({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   return (
     <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
       <div className="container-luxury grid gap-10 py-12 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
@@ -199,14 +199,14 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             {t("hero.rated")}
           </div>
           <h1 className="mt-6 whitespace-pre-line font-display text-[2.25rem] leading-[1.05] sm:text-[2.75rem] md:text-7xl lg:text-[5.25rem] animate-fade-up">
-            {tenant.hero.title.split("\n").map((line, i) => (
+            {tx(tenant.hero.title).split("\n").map((line, i) => (
               <span key={i} className="block">
                 {i === 1 ? <span className="italic text-[color:var(--bronze)]">{line}</span> : line}
               </span>
             ))}
           </h1>
           <p className="mt-6 max-w-md text-[15px] text-muted-foreground md:text-lg animate-fade-up">
-            {tenant.hero.subtitle}
+            {tx(tenant.hero.subtitle)}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center animate-fade-up">
             <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-booking"))} className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background transition hover:opacity-90">
@@ -223,7 +223,7 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
             {tenant.stats.map((s) => (
               <div key={s.label} className="px-4 py-5 md:px-5 md:py-6">
                 <p className="font-display text-2xl md:text-[2rem]">{s.value}</p>
-                <p className="mt-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{s.label}</p>
+                <p className="mt-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{tx(s.label)}</p>
               </div>
             ))}
           </div>
@@ -250,6 +250,7 @@ function Hero({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Pillars({ tenant }: { tenant: PublicTenant }) {
+  const { tx } = useI18n();
   const map = { scissors: Scissors, sparkles: Sparkles, crown: Crown, star: Star } as const;
   return (
     <section className="border-y bg-secondary/40">
@@ -259,7 +260,7 @@ function Pillars({ tenant }: { tenant: PublicTenant }) {
           return (
             <div key={p.title} className="flex items-center gap-3 px-4 py-6 md:px-6 md:py-8">
               <Icon className="h-5 w-5 text-[color:var(--bronze)]" strokeWidth={1.4} />
-              <span className="text-xs uppercase tracking-[0.2em] text-foreground/75">{p.title}</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-foreground/75">{tx(p.title)}</span>
             </div>
           );
         })}
@@ -280,15 +281,66 @@ function SectionHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: s
 }
 
 function Services({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
+  const [idx, setIdx] = useState(0);
+  const count = tenant.services.length;
+  const go = (n: number) => setIdx(((n % count) + count) % count);
   return (
     <section id="services" className="container-luxury py-16 md:py-32">
       <SectionHeader eyebrow={t("services.eyebrow")} title={t("services.title")} subtitle={t("services.subtitle")} />
-      <div className="mt-10 grid gap-5 sm:grid-cols-2 md:mt-16 md:gap-6 lg:grid-cols-4">
+      {/* Mobile carousel */}
+      <div className="mt-10 md:hidden">
+        <div className="overflow-hidden">
+          <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${idx * 100}%)` }}>
+            {tenant.services.map((s) => (
+              <article key={s.id} className="w-full shrink-0 px-1">
+                <div className="overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)]">
+                  <div className="relative aspect-[4/5] overflow-hidden">
+                    <img src={s.image ?? undefined} alt={tx(s.name)} loading="lazy" className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-charcoal/55 via-transparent" />
+                    <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
+                      {s.durationMin} {t("services.min")}
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="font-display text-xl">{tx(s.name)}</h3>
+                      <span className="font-display text-xl text-[color:var(--bronze)]">${s.price}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{tx(s.description)}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("open-booking", { detail: { serviceId: s.id } }))}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-foreground/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition"
+                    >
+                      {t("services.book")}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="mt-5 flex items-center justify-between">
+          <button onClick={() => go(idx - 1)} aria-label="Previous" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 bg-background">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex gap-2">
+            {tenant.services.map((_, i) => (
+              <button key={i} onClick={() => setIdx(i)} aria-label={`Slide ${i + 1}`} className={`h-1.5 rounded-full transition-all ${i === idx ? "w-8 bg-[color:var(--bronze)]" : "w-1.5 bg-foreground/20"}`} />
+            ))}
+          </div>
+          <button onClick={() => go(idx + 1)} aria-label="Next" className="grid h-10 w-10 place-items-center rounded-full border border-foreground/15 bg-background">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      {/* Desktop grid */}
+      <div className="mt-16 hidden gap-6 md:grid sm:grid-cols-2 lg:grid-cols-4">
         {tenant.services.map((s) => (
           <article key={s.id} className="group relative overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)] transition hover:shadow-[var(--shadow-luxury)]">
             <div className="relative aspect-[4/5] overflow-hidden">
-              <img src={s.image ?? undefined} alt={s.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" />
+              <img src={s.image ?? undefined} alt={tx(s.name)} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" />
               <div className="absolute inset-0 bg-gradient-to-t from-charcoal/55 via-transparent" />
               <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
                 {s.durationMin} {t("services.min")}
@@ -296,10 +348,10 @@ function Services({ tenant }: { tenant: PublicTenant }) {
             </div>
             <div className="p-5">
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="font-display text-xl">{s.name}</h3>
+                <h3 className="font-display text-xl">{tx(s.name)}</h3>
                 <span className="font-display text-xl text-[color:var(--bronze)]">${s.price}</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{s.description}</p>
+              <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{tx(s.description)}</p>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("open-booking", { detail: { serviceId: s.id } }))}
@@ -319,7 +371,7 @@ function Services({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Memberships({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   return (
     <section id="memberships" className="relative overflow-hidden py-16 md:py-32" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.92 0.03 80) 100%)" }}>
       <div className="absolute inset-0 opacity-[0.5]" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, var(--champagne) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--champagne) 0%, transparent 45%)" }} />
@@ -344,7 +396,7 @@ function Memberships({ tenant }: { tenant: PublicTenant }) {
             >
               {m.badge && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[color:var(--champagne)] px-4 py-1 text-[10px] uppercase tracking-[0.22em] text-charcoal">
-                  {m.badge}
+                  {tx(m.badge)}
                 </span>
               )}
               <p className="eyebrow">{m.name}</p>
@@ -357,7 +409,7 @@ function Memberships({ tenant }: { tenant: PublicTenant }) {
                 {m.benefits.map((b) => (
                   <li key={b} className="flex items-start gap-3 text-sm">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--bronze)]" />
-                    <span className="text-foreground/85">{b}</span>
+                    <span className="text-foreground/85">{tx(b)}</span>
                   </li>
                 ))}
               </ul>
@@ -398,7 +450,7 @@ function Gallery({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Testimonials({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   const [idx, setIdx] = useState(0);
   const items = tenant.testimonials;
   const count = items.length;
@@ -419,10 +471,10 @@ function Testimonials({ tenant }: { tenant: PublicTenant }) {
                         <Star key={i} className="h-4 w-4 fill-current" strokeWidth={0} />
                       ))}
                     </div>
-                    <blockquote className="mt-5 font-serif text-lg leading-snug text-foreground/85">"{tt.quote}"</blockquote>
+                    <blockquote className="mt-5 font-serif text-lg leading-snug text-foreground/85">"{tx(tt.quote)}"</blockquote>
                     <figcaption className="mt-6 border-t pt-4">
                       <p className="font-display text-lg">{tt.name}</p>
-                      <p className="mt-0.5 text-xs uppercase tracking-[0.2em] text-muted-foreground">{tt.role}</p>
+                      <p className="mt-0.5 text-xs uppercase tracking-[0.2em] text-muted-foreground">{tx(tt.role)}</p>
                     </figcaption>
                   </div>
                 </figure>
@@ -445,19 +497,19 @@ function Testimonials({ tenant }: { tenant: PublicTenant }) {
         </div>
         {/* Desktop grid */}
         <div className="mt-16 hidden gap-6 md:grid md:grid-cols-3">
-          {tenant.testimonials.map((t) => (
-            <figure key={t.name} className="flex h-full flex-col rounded-2xl border bg-card p-8 shadow-[var(--shadow-soft)]">
+          {tenant.testimonials.map((tt) => (
+            <figure key={tt.name} className="flex h-full flex-col rounded-2xl border bg-card p-8 shadow-[var(--shadow-soft)]">
               <div className="flex gap-0.5 text-[color:var(--champagne)]">
-                {Array.from({ length: t.rating }).map((_, i) => (
+                {Array.from({ length: tt.rating }).map((_, i) => (
                   <Star key={i} className="h-4 w-4 fill-current" strokeWidth={0} />
                 ))}
               </div>
               <blockquote className="mt-6 font-serif text-xl leading-snug text-foreground/85">
-                "{t.quote}"
+                "{tx(tt.quote)}"
               </blockquote>
               <figcaption className="mt-8 border-t pt-5">
-                <p className="font-display text-lg">{t.name}</p>
-                <p className="mt-0.5 text-xs uppercase tracking-[0.2em] text-muted-foreground">{t.role}</p>
+                <p className="font-display text-lg">{tt.name}</p>
+                <p className="mt-0.5 text-xs uppercase tracking-[0.2em] text-muted-foreground">{tx(tt.role)}</p>
               </figcaption>
             </figure>
           ))}
@@ -468,7 +520,7 @@ function Testimonials({ tenant }: { tenant: PublicTenant }) {
 }
 
 function Contact({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   return (
     <section id="contact" className="container-luxury py-16 md:py-32">
       <div id="book" className="grid gap-10 lg:grid-cols-2 lg:gap-20">
@@ -501,9 +553,9 @@ function Contact({ tenant }: { tenant: PublicTenant }) {
               <li key={h.day} className="flex items-center justify-between py-4 text-sm">
                 <span className="flex items-center gap-3 text-foreground/80">
                   <Clock className="h-4 w-4 text-[color:var(--bronze)]" />
-                  {h.day}
+                  {tx(h.day)}
                 </span>
-                <span className="font-display text-base md:text-lg">{h.hours}</span>
+                <span className="font-display text-base md:text-lg">{tx(h.hours)}</span>
               </li>
             ))}
           </ul>
@@ -530,7 +582,7 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
 }
 
 function Footer({ tenant }: { tenant: PublicTenant }) {
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   return (
     <footer className="border-t bg-secondary/40">
       <div className="container-luxury py-10 flex flex-col items-center gap-5 text-center md:py-12 md:flex-row md:justify-between md:text-left">
@@ -540,7 +592,7 @@ function Footer({ tenant }: { tenant: PublicTenant }) {
           </span>
           <div>
             <p className="font-display text-xl leading-none">{tenant.name}</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{tenant.tagline}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{tx(tenant.tagline)}</p>
           </div>
         </div>
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">

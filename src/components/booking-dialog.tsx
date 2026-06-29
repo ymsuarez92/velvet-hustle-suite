@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAvailableSlots, createBooking } from "@/lib/booking.functions";
-import { X, Loader2, Check, Calendar, Clock } from "lucide-react";
+import { X, Loader2, Check, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 type Service = { id: string; name: string; durationMin: number; price: number };
 
@@ -16,8 +20,11 @@ function fmtDay(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 }
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+function isoFromDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
 }
 
 export function BookingDialog({
@@ -66,6 +73,7 @@ export function BookingDialog({
 
   const dateOptions = useMemo(() => Array.from({ length: 14 }).map((_, i) => todayISO(i)), []);
   const selectedService = services.find((s) => s.id === serviceId);
+  const [dateOpen, setDateOpen] = useState(false);
 
   if (!open) return null;
 
@@ -102,17 +110,22 @@ export function BookingDialog({
             {/* Service */}
             <div className="mt-6 md:mt-8">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("book.service")}</p>
-              {/* Mobile: native select for great UX */}
-              <select
-                value={serviceId}
-                onChange={(e) => { setServiceId(e.target.value); setSlot(null); }}
-                className="mt-3 w-full rounded-xl border bg-background px-4 py-3.5 text-sm font-medium outline-none focus:border-[color:var(--bronze)] md:hidden"
-              >
-                <option value="" disabled>{t("book.pickService")}</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} · {s.durationMin} {t("services.min")} · ${s.price}</option>
-                ))}
-              </select>
+              {/* Mobile: premium shadcn select */}
+              <div className="md:hidden mt-3">
+                <Select value={serviceId} onValueChange={(v) => { setServiceId(v); setSlot(null); }}>
+                  <SelectTrigger className="h-12 w-full rounded-xl border bg-background px-4 text-sm font-medium">
+                    <SelectValue placeholder={t("book.pickService")} />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    {services.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <span className="font-medium">{s.name}</span>
+                        <span className="ml-2 text-muted-foreground">· {s.durationMin} {t("services.min")} · ${s.price}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {/* Desktop: card grid */}
               <div className="mt-3 hidden gap-2 md:grid sm:grid-cols-2">
                 {services.map((s) => (
@@ -131,15 +144,37 @@ export function BookingDialog({
             {/* Date */}
             <div className="mt-6 md:mt-8">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("book.date")}</p>
-              <select
-                value={date}
-                onChange={(e) => { setDate(e.target.value); setSlot(null); }}
-                className="mt-3 w-full rounded-xl border bg-background px-4 py-3.5 text-sm font-medium outline-none focus:border-[color:var(--bronze)] md:hidden"
-              >
-                {dateOptions.map((d) => (
-                  <option key={d} value={d}>{new Date(d + "T00:00:00").toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}</option>
-                ))}
-              </select>
+              {/* Mobile: full date picker */}
+              <div className="md:hidden mt-3">
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-12 w-full items-center justify-between rounded-xl border bg-background px-4 text-sm font-medium"
+                    >
+                      <span className="flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 text-[color:var(--bronze)]" />
+                        {fmtDayLong(date)}
+                      </span>
+                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("book.pickDate")}</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="z-[200] w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(date + "T00:00:00")}
+                      onSelect={(d) => { if (d) { setDate(isoFromDate(d)); setSlot(null); setDateOpen(false); } }}
+                      disabled={(d) => {
+                        const today = new Date(); today.setHours(0,0,0,0);
+                        const max = new Date(); max.setDate(max.getDate() + 60);
+                        return d < today || d > max;
+                      }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
               <div className="mt-3 hidden gap-2 overflow-x-auto pb-2 md:flex">
                 {dateOptions.map((d) => (
                   <button key={d} onClick={() => { setDate(d); setSlot(null); }}
@@ -159,17 +194,19 @@ export function BookingDialog({
                 {slotsQ.data && slotsQ.data.length === 0 && <p className="text-sm text-muted-foreground">{t("book.empty")}</p>}
                 {slotsQ.data && slotsQ.data.length > 0 && (
                   <>
-                    {/* Mobile: select */}
-                    <select
-                      value={slot ?? ""}
-                      onChange={(e) => setSlot(e.target.value || null)}
-                      className="w-full rounded-xl border bg-background px-4 py-3.5 text-sm font-medium outline-none focus:border-[color:var(--bronze)] md:hidden"
-                    >
-                      <option value="" disabled>{t("book.pickTime")}</option>
-                      {slotsQ.data.map((time) => (
-                        <option key={time} value={time}>{fmtTimeLoc(time)}</option>
-                      ))}
-                    </select>
+                    {/* Mobile: premium select */}
+                    <div className="md:hidden">
+                      <Select value={slot ?? ""} onValueChange={(v) => setSlot(v || null)}>
+                        <SelectTrigger className="h-12 w-full rounded-xl border bg-background px-4 text-sm font-medium">
+                          <SelectValue placeholder={t("book.pickTime")} />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          {slotsQ.data.map((time) => (
+                            <SelectItem key={time} value={time}>{fmtTimeLoc(time)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {/* Desktop: chips */}
                     <div className="hidden flex-wrap gap-2 md:flex">
                       {slotsQ.data.map((time) => (
@@ -203,7 +240,7 @@ export function BookingDialog({
                 </label>
                 <div className="sm:col-span-2 mt-2 flex flex-col gap-3 rounded-xl bg-secondary/60 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4 text-[color:var(--bronze)]" /> {fmtDayLong(slot.slice(0,10))}</span>
+                    <span className="inline-flex items-center gap-1.5"><CalendarIcon className="h-4 w-4 text-[color:var(--bronze)]" /> {fmtDayLong(slot.slice(0,10))}</span>
                     <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-[color:var(--bronze)]" /> {fmtTimeLoc(slot)}</span>
                   </div>
                   <button
