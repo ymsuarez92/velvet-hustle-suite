@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { getTenant, type Tenant } from "@/data/tenants";
+import { getPublicTenant, type PublicTenant } from "@/lib/tenants.functions";
 import {
   Scissors,
   Sparkles,
@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/b/$slug")({
-  head: ({ params }) => {
-    const t = getTenant(params.slug);
-    const title = t ? `${t.name} — Premium Grooming, ${t.city}` : "Maison House";
+  head: ({ loaderData }) => {
+    const t = (loaderData as { tenant?: PublicTenant } | undefined)?.tenant;
+    const title = t ? `${t.name} — Premium Grooming${t.city ? `, ${t.city}` : ""}` : "Maison House";
     const desc = t?.tagline ?? "A premium grooming experience.";
     return {
       meta: [
@@ -30,8 +30,8 @@ export const Route = createFileRoute("/b/$slug")({
       ],
     };
   },
-  loader: ({ params }) => {
-    const tenant = getTenant(params.slug);
+  loader: async ({ params }) => {
+    const tenant = await getPublicTenant({ data: { slug: params.slug } });
     if (!tenant) throw notFound();
     return { tenant };
   },
@@ -75,7 +75,7 @@ function TenantLanding() {
 
 /* ------------------------------------------------------------------ */
 
-function Navbar({ tenant }: { tenant: Tenant }) {
+function Navbar({ tenant }: { tenant: PublicTenant }) {
   const links = [
     { href: "#home", label: "Home" },
     { href: "#services", label: "Services" },
@@ -127,7 +127,7 @@ function Navbar({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Hero({ tenant }: { tenant: Tenant }) {
+function Hero({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="home" className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.96 0.02 80) 100%)" }}>
       <div className="container-luxury grid gap-12 py-16 md:grid-cols-12 md:gap-12 md:py-24 lg:py-28">
@@ -187,7 +187,7 @@ function Hero({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Pillars({ tenant }: { tenant: Tenant }) {
+function Pillars({ tenant }: { tenant: PublicTenant }) {
   const map = { scissors: Scissors, sparkles: Sparkles, crown: Crown, star: Star } as const;
   return (
     <section className="border-y bg-secondary/40">
@@ -217,7 +217,7 @@ function SectionHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: s
   );
 }
 
-function Services({ tenant }: { tenant: Tenant }) {
+function Services({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="services" className="container-luxury py-24 md:py-32">
       <SectionHeader eyebrow="Our craft" title="Considered rituals" subtitle="A short, deliberate menu of grooming rituals — each performed unhurried, by hand." />
@@ -225,7 +225,7 @@ function Services({ tenant }: { tenant: Tenant }) {
         {tenant.services.map((s) => (
           <article key={s.id} className="group relative overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)] transition hover:shadow-[var(--shadow-luxury)]">
             <div className="relative aspect-[4/5] overflow-hidden">
-              <img src={s.image} alt={s.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" />
+              <img src={s.image ?? undefined} alt={s.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" />
               <div className="absolute inset-0 bg-gradient-to-t from-charcoal/55 via-transparent" />
               <div className="absolute right-4 top-4 rounded-full bg-background/90 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">
                 {s.durationMin} min
@@ -248,7 +248,7 @@ function Services({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Memberships({ tenant }: { tenant: Tenant }) {
+function Memberships({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="memberships" className="relative overflow-hidden py-24 md:py-32" style={{ background: "linear-gradient(180deg, var(--cream) 0%, oklch(0.92 0.03 80) 100%)" }}>
       <div className="absolute inset-0 opacity-[0.5]" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, var(--champagne) 0%, transparent 40%), radial-gradient(circle at 80% 70%, var(--champagne) 0%, transparent 45%)" }} />
@@ -303,7 +303,7 @@ function Memberships({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Gallery({ tenant }: { tenant: Tenant }) {
+function Gallery({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="gallery" className="container-luxury py-24 md:py-32">
       <SectionHeader eyebrow="The house" title="A glimpse inside" subtitle="Quiet corners, warm light and the unhurried craft of being well-kept." />
@@ -327,7 +327,7 @@ function Gallery({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Testimonials({ tenant }: { tenant: Tenant }) {
+function Testimonials({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="testimonials" className="bg-secondary/50 py-24 md:py-32">
       <div className="container-luxury">
@@ -355,7 +355,7 @@ function Testimonials({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function Contact({ tenant }: { tenant: Tenant }) {
+function Contact({ tenant }: { tenant: PublicTenant }) {
   return (
     <section id="contact" className="container-luxury py-24 md:py-32">
       <div id="book" className="grid gap-12 lg:grid-cols-2 lg:gap-20">
@@ -375,10 +375,10 @@ function Contact({ tenant }: { tenant: Tenant }) {
           </div>
 
           <dl className="mt-12 space-y-5 border-t pt-8 text-sm">
-            <Row icon={<MapPin className="h-4 w-4" />} label="Address" value={tenant.address} />
-            <Row icon={<Phone className="h-4 w-4" />} label="Phone" value={tenant.phone} />
-            <Row icon={<Instagram className="h-4 w-4" />} label="Instagram" value={tenant.instagram} />
-            <Row icon={<Mail className="h-4 w-4" />} label="Email" value={tenant.email} />
+            <Row icon={<MapPin className="h-4 w-4" />} label="Address" value={tenant.address ?? "—"} />
+            <Row icon={<Phone className="h-4 w-4" />} label="Phone" value={tenant.phone ?? "—"} />
+            <Row icon={<Instagram className="h-4 w-4" />} label="Instagram" value={tenant.instagram ?? "—"} />
+            <Row icon={<Mail className="h-4 w-4" />} label="Email" value={tenant.email ?? "—"} />
           </dl>
         </div>
 
@@ -418,7 +418,7 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
   );
 }
 
-function Footer({ tenant }: { tenant: Tenant }) {
+function Footer({ tenant }: { tenant: PublicTenant }) {
   return (
     <footer className="border-t bg-secondary/40">
       <div className="container-luxury py-12 flex flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
@@ -439,7 +439,7 @@ function Footer({ tenant }: { tenant: Tenant }) {
   );
 }
 
-function WhatsAppFab({ tenant }: { tenant: Tenant }) {
+function WhatsAppFab({ tenant }: { tenant: PublicTenant }) {
   return (
     <a
       href={`https://wa.me/${tenant.whatsapp}`}
