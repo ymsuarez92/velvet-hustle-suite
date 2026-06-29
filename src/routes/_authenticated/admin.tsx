@@ -818,6 +818,7 @@ function UsersSection() {
   const create = useServerFn(createPlatformUser);
   const reset = useServerFn(resetUserPassword);
   const del = useServerFn(deletePlatformUser);
+  const setRoles = useServerFn(setUserRoles);
 
   const usersQ = useQuery({ queryKey: ["plat-users"], queryFn: () => list() });
   const tenantsQ = useQuery({ queryKey: ["admin", "tenants"], queryFn: () => tenants() });
@@ -825,53 +826,85 @@ function UsersSection() {
   const createMut = useMutation({ mutationFn: (i: any) => create({ data: i }), onSuccess: () => qc.invalidateQueries({ queryKey: ["plat-users"] }) });
   const resetMut = useMutation({ mutationFn: (i: { userId: string; password: string }) => reset({ data: i }) });
   const delMut = useMutation({ mutationFn: (id: string) => del({ data: { userId: id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["plat-users"] }) });
+  const rolesMut = useMutation({ mutationFn: (i: any) => setRoles({ data: i }), onSuccess: () => qc.invalidateQueries({ queryKey: ["plat-users"] }) });
 
   const [showCreate, setShowCreate] = useState(false);
+  const [editUser, setEditUser] = useState<PlatformUser | null>(null);
+  const [roleFilter, setRoleFilter] = useState<"all" | "super_admin" | "business_admin" | "staff" | "none">("all");
+  const [q, setQ] = useState("");
+
+  const tenantsList = tenantsQ.data ?? [];
+  const filtered = (usersQ.data ?? []).filter((u) => {
+    if (q && !(u.email ?? "").toLowerCase().includes(q.toLowerCase())) return false;
+    if (roleFilter === "all") return true;
+    if (roleFilter === "none") return u.roles.length === 0;
+    return u.roles.some((r) => r.role === roleFilter);
+  });
+
+  const roleLabel = (r: string) =>
+    r === "super_admin" ? "Super admin" : r === "business_admin" ? "Owner" : r === "staff" ? "Staff" : r;
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <header className="flex items-end justify-between flex-wrap gap-4">
-        <div>
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
           <p className="eyebrow">Users</p>
-          <h1 className="font-display text-4xl mt-2">Accounts & roles</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Create tenant owners, reset credentials, manage platform admins.</p>
+          <h1 className="font-display text-3xl sm:text-4xl mt-2 truncate">Cuentas y roles</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Crea dueños de tenant, asigna negocios y gestiona admins de plataforma.</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-luxury">+ New user</button>
+        <button onClick={() => setShowCreate(true)} className="btn-luxury shrink-0 whitespace-nowrap">+ Nuevo usuario</button>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por email…"
+          className="flex-1 min-w-[180px] rounded-full border bg-background px-4 py-2 text-sm outline-none focus:border-[color:var(--bronze)]"
+        />
+        {(["all", "super_admin", "business_admin", "staff", "none"] as const).map((k) => (
+          <Chip key={k} active={roleFilter === k} onClick={() => setRoleFilter(k)}>
+            {k === "all" ? "Todos" : k === "none" ? "Sin rol" : roleLabel(k)}
+          </Chip>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-hidden rounded-2xl border bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
             <tr>
               <th className="px-5 py-4">Email</th>
-              <th className="px-5 py-4">Roles</th>
-              <th className="px-5 py-4">Last sign-in</th>
-              <th className="px-5 py-4 text-right">Actions</th>
+              <th className="px-5 py-4">Roles & tenants</th>
+              <th className="px-5 py-4">Último acceso</th>
+              <th className="px-5 py-4 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {usersQ.isLoading && <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">Loading…</td></tr>}
-            {usersQ.data?.map((u) => (
+            {usersQ.isLoading && <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">Cargando…</td></tr>}
+            {!usersQ.isLoading && filtered.length === 0 && <tr><td colSpan={4} className="px-5 py-10 text-center text-muted-foreground">Sin resultados.</td></tr>}
+            {filtered.map((u) => (
               <tr key={u.id} className="border-t">
                 <td className="px-5 py-4 font-medium">{u.email}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-1.5">
-                    {u.roles.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                    {u.roles.length === 0 && <span className="text-xs text-muted-foreground">Sin rol</span>}
                     {u.roles.map((r, i) => (
                       <span key={i} className={`rounded-full px-2.5 py-1 text-xs ${r.role === "super_admin" ? "bg-[color:var(--bronze)] text-white" : "bg-muted"}`}>
-                        {r.role}{r.business_name ? ` · ${r.business_name}` : ""}
+                        {roleLabel(r.role)}{r.business_name ? ` · ${r.business_name}` : ""}
                       </span>
                     ))}
                   </div>
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">{u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString() : "—"}</td>
                 <td className="px-5 py-4 text-right">
-                  <div className="inline-flex gap-1.5">
+                  <div className="inline-flex flex-wrap justify-end gap-1.5">
+                    <button onClick={() => setEditUser(u)} className="rounded-full border px-3 py-1 text-xs hover:border-[color:var(--bronze)]">Editar roles</button>
                     <button onClick={() => {
-                      const p = prompt(`Set new password for ${u.email} (min 8 chars):`);
+                      const p = prompt(`Nueva contraseña para ${u.email} (mín. 8):`);
                       if (p && p.length >= 8) resetMut.mutate({ userId: u.id, password: p });
-                    }} className="rounded-full border px-3 py-1 text-xs">Reset password</button>
-                    <button onClick={() => { if (confirm(`Delete user ${u.email}?`)) delMut.mutate(u.id); }} className="rounded-full border border-red-300 px-3 py-1 text-xs text-red-700">Delete</button>
+                    }} className="rounded-full border px-3 py-1 text-xs">Reset</button>
+                    <button onClick={() => { if (confirm(`¿Eliminar usuario ${u.email}?`)) delMut.mutate(u.id); }} className="rounded-full border border-red-300 px-3 py-1 text-xs text-red-700">Eliminar</button>
                   </div>
                 </td>
               </tr>
@@ -879,15 +912,64 @@ function UsersSection() {
           </tbody>
         </table>
       </div>
-      {resetMut.isSuccess && <p className="text-sm text-emerald-700">Password updated ✓</p>}
-      {(createMut.error || resetMut.error || delMut.error) && <p className="text-sm text-red-600">{((createMut.error || resetMut.error || delMut.error) as Error).message}</p>}
+
+      {/* Mobile cards */}
+      <div className="grid gap-3 md:hidden">
+        {usersQ.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+        {!usersQ.isLoading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Sin resultados.</p>}
+        {filtered.map((u) => (
+          <div key={u.id} className="rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{u.email}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {u.lastSignInAt ? `Último acceso ${new Date(u.lastSignInAt).toLocaleDateString()}` : "Sin acceso aún"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {u.roles.length === 0 && <span className="text-xs text-muted-foreground">Sin rol</span>}
+              {u.roles.map((r, i) => (
+                <span key={i} className={`rounded-full px-2.5 py-1 text-xs ${r.role === "super_admin" ? "bg-[color:var(--bronze)] text-white" : "bg-muted"}`}>
+                  {roleLabel(r.role)}{r.business_name ? ` · ${r.business_name}` : ""}
+                </span>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <button onClick={() => setEditUser(u)} className="rounded-full border px-3 py-1.5 text-xs hover:border-[color:var(--bronze)]">Editar roles</button>
+              <button onClick={() => {
+                const p = prompt(`Nueva contraseña para ${u.email} (mín. 8):`);
+                if (p && p.length >= 8) resetMut.mutate({ userId: u.id, password: p });
+              }} className="rounded-full border px-3 py-1.5 text-xs">Reset</button>
+              <button onClick={() => { if (confirm(`¿Eliminar usuario ${u.email}?`)) delMut.mutate(u.id); }} className="rounded-full border border-red-300 px-3 py-1.5 text-xs text-red-700">Eliminar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {resetMut.isSuccess && <p className="text-sm text-emerald-700">Contraseña actualizada ✓</p>}
+      {rolesMut.isSuccess && <p className="text-sm text-emerald-700">Roles actualizados ✓</p>}
+      {(createMut.error || resetMut.error || delMut.error || rolesMut.error) && <p className="text-sm text-red-600">{((createMut.error || resetMut.error || delMut.error || rolesMut.error) as Error).message}</p>}
 
       {showCreate && (
         <CreateUserModal
-          tenants={tenantsQ.data ?? []}
+          tenants={tenantsList}
           submitting={createMut.isPending}
           onClose={() => setShowCreate(false)}
           onSubmit={async (f) => { await createMut.mutateAsync(f); setShowCreate(false); }}
+        />
+      )}
+
+      {editUser && (
+        <EditUserRolesModal
+          user={editUser}
+          tenants={tenantsList}
+          submitting={rolesMut.isPending}
+          onClose={() => setEditUser(null)}
+          onSubmit={async (roles) => {
+            await rolesMut.mutateAsync({ userId: editUser.id, roles });
+            setEditUser(null);
+          }}
         />
       )}
     </div>
