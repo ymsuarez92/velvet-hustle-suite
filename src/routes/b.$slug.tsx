@@ -255,6 +255,13 @@ function Services({ tenant }: { tenant: PublicTenant }) {
                 <span className="font-display text-xl text-[color:var(--bronze)]">${s.price}</span>
               </div>
               <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{s.description}</p>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("open-booking", { detail: { serviceId: s.id } }))}
+                className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-foreground/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] hover:bg-foreground hover:text-background transition"
+              >
+                Book
+              </button>
             </div>
           </article>
         ))}
