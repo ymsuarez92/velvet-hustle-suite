@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin.functions";
 import { assignBusinessOwner } from "@/lib/business-admin.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyAccess } from "@/lib/access.functions";
 
 function buildTenantPublicUrl(slug: string): string {
   if (typeof window === "undefined") return `/b/${slug}`;
@@ -29,6 +30,16 @@ function buildTenantPublicUrl(slug: string): string {
 }
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  beforeLoad: async () => {
+    const access = await getMyAccess();
+    if (!access.isSuperAdmin) {
+      if (access.businessSlugs.length > 0) {
+        throw redirect({ to: "/b/$slug/admin", params: { slug: access.businessSlugs[0] } });
+      }
+      throw redirect({ to: "/forbidden" });
+    }
+    return { access };
+  },
   component: SuperAdmin,
 });
 
