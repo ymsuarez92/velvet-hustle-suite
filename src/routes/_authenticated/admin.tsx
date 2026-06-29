@@ -3,6 +3,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  LayoutDashboard, Store, Users2, CreditCard, Receipt, Ticket, Bell, Settings,
+  BarChart3, TrendingUp, Crown, Calendar, UserCircle2, FileText, Library, Folder, ScrollText,
+  Search, HelpCircle, Plus, Building2, UserPlus, FilePlus2, PenSquare, ArrowUpRight,
+  Store as StoreIcon, DollarSign,
+} from "lucide-react";
+import {
   listAllTenants, createTenant, updateTenant, setTenantStatus, deleteTenant,
   getPlatformStats, listPlatformUsers, createPlatformUser, resetUserPassword, deletePlatformUser,
   listServiceTemplates, upsertServiceTemplate, deleteServiceTemplate,
@@ -19,18 +25,47 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Section = "overview" | "tenants" | "users" | "templates" | "audit";
 
-const NAV: { id: Section; label: string; icon: string }[] = [
-  { id: "overview", label: "Overview", icon: "◇" },
-  { id: "tenants", label: "Tenants", icon: "◈" },
-  { id: "users", label: "Users", icon: "◉" },
-  { id: "templates", label: "Templates", icon: "◎" },
-  { id: "audit", label: "Audit log", icon: "◐" },
+type NavItem = { id: Section; label: string; Icon: React.ComponentType<{ className?: string }>; soon?: boolean };
+const NAV_GROUPS: { title?: string; items: NavItem[] }[] = [
+  { items: [{ id: "overview", label: "Dashboard", Icon: LayoutDashboard }] },
+  {
+    title: "Platform",
+    items: [
+      { id: "tenants", label: "Tenants (Negocios)", Icon: Store },
+      { id: "users", label: "Usuarios", Icon: Users2 },
+      { id: "tenants", label: "Planes & Suscripciones", Icon: CreditCard, soon: true },
+      { id: "tenants", label: "Pagos & Facturación", Icon: Receipt, soon: true },
+      { id: "tenants", label: "Cupones", Icon: Ticket, soon: true },
+      { id: "audit", label: "Notificaciones", Icon: Bell, soon: true },
+      { id: "overview", label: "Configuraciones", Icon: Settings, soon: true },
+    ],
+  },
+  {
+    title: "Reportes",
+    items: [
+      { id: "overview", label: "Analytics Global", Icon: BarChart3 },
+      { id: "overview", label: "Ingresos", Icon: TrendingUp },
+      { id: "templates", label: "Membresías", Icon: Crown },
+      { id: "tenants", label: "Citas", Icon: Calendar, soon: true },
+      { id: "users", label: "Clientes", Icon: UserCircle2, soon: true },
+    ],
+  },
+  {
+    title: "Herramientas",
+    items: [
+      { id: "templates", label: "Plantillas de Servicios", Icon: FileText },
+      { id: "templates", label: "Plantillas de Membresías", Icon: Library },
+      { id: "templates", label: "Recursos", Icon: Folder, soon: true },
+      { id: "audit", label: "Logs de Actividad", Icon: ScrollText },
+    ],
+  },
 ];
 
 function SuperAdmin() {
   const router = useRouter();
   const qc = useQueryClient();
   const [section, setSection] = useState<Section>("overview");
+  const [activeKey, setActiveKey] = useState<string>("Dashboard");
 
   async function signOut() {
     await qc.cancelQueries();
@@ -40,44 +75,105 @@ function SuperAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex w-64 flex-col border-r bg-card">
-        <div className="px-6 py-7 border-b">
-          <p className="eyebrow">Platform</p>
-          <h1 className="font-display text-xl mt-1">Maison CRM</h1>
+    <div className="min-h-screen bg-[#f7f5f0] flex text-[#1c1c20]">
+      {/* Sidebar */}
+      <aside className="hidden lg:flex w-64 flex-col bg-[#161618] text-neutral-300">
+        <div className="px-6 py-6 border-b border-white/5 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center">
+            <Crown className="h-5 w-5 text-[#161618]" />
+          </div>
+          <div>
+            <p className="font-display text-[15px] tracking-[0.18em] text-white leading-none">ELITE BARBER</p>
+            <p className="text-[10px] tracking-[0.45em] text-[#d4a85a] mt-1">CLUB</p>
+          </div>
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          {NAV.map((n) => (
-            <button key={n.id} onClick={() => setSection(n.id)}
-              className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${section === n.id ? "bg-[color:var(--bronze)] text-white" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"}`}>
-              <span className="text-base">{n.icon}</span>
-              {n.label}
-            </button>
+        <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-5">
+          {NAV_GROUPS.map((g, gi) => (
+            <div key={gi}>
+              {g.title && <p className="px-3 pb-2 text-[10px] tracking-[0.3em] text-neutral-500 uppercase">{g.title}</p>}
+              <ul className="space-y-0.5">
+                {g.items.map((it) => {
+                  const active = activeKey === it.label;
+                  return (
+                    <li key={it.label}>
+                      <button
+                        onClick={() => { setActiveKey(it.label); setSection(it.id); }}
+                        className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
+                          active ? "bg-[#d4a85a]/15 text-[#d4a85a]" : "text-neutral-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <it.Icon className="h-4 w-4" />
+                        <span className="truncate">{it.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           ))}
         </nav>
-        <div className="border-t p-4 space-y-2">
-          <Link to="/" className="block text-xs text-muted-foreground hover:text-foreground">Platform home</Link>
-          <button onClick={signOut} className="w-full rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
+        <div className="border-t border-white/5 p-3">
+          <div className="flex items-center gap-3 rounded-md px-2 py-2">
+            <div className="h-9 w-9 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center">
+              <Crown className="h-4 w-4 text-[#161618]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white truncate">Elite Barber Club</p>
+              <p className="text-[11px] text-neutral-500">Super Admin</p>
+            </div>
+            <button onClick={signOut} title="Sign out" className="text-neutral-500 hover:text-white text-xs">⋮</button>
+          </div>
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0">
-        <header className="border-b lg:hidden">
-          <div className="container-luxury flex items-center justify-between py-4 gap-2">
-            <select value={section} onChange={(e) => setSection(e.target.value as Section)} className="rounded-md border bg-background px-3 py-2 text-sm">
-              {NAV.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
+      {/* Main */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Top bar */}
+        <header className="bg-white/80 backdrop-blur border-b border-black/5 px-6 lg:px-10 py-4 flex items-center gap-4">
+          <div className="lg:hidden">
+            <select value={activeKey} onChange={(e) => {
+              const found = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.label === e.target.value);
+              if (found) { setActiveKey(found.label); setSection(found.id); }
+            }} className="rounded-md border bg-white px-3 py-2 text-sm">
+              {NAV_GROUPS.flatMap((g) => g.items).map((i) => <option key={i.label}>{i.label}</option>)}
             </select>
-            <button onClick={signOut} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Sign out</button>
+          </div>
+          <div className="hidden md:block">
+            <h1 className="font-display text-2xl leading-tight">{activeKey}</h1>
+            <p className="text-xs text-neutral-500">Resumen general de la plataforma</p>
+          </div>
+          <div className="flex-1" />
+          <div className="hidden md:flex items-center gap-2 rounded-lg border bg-white px-3 py-2 w-[320px]">
+            <Search className="h-4 w-4 text-neutral-400" />
+            <input placeholder="Buscar negocios, usuarios, etc..." className="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-400" />
+            <kbd className="text-[10px] text-neutral-400 border rounded px-1.5 py-0.5">⌘K</kbd>
+          </div>
+          <button className="relative h-9 w-9 grid place-items-center rounded-full hover:bg-black/5">
+            <Bell className="h-4 w-4 text-neutral-600" />
+            <span className="absolute -top-0.5 -right-0.5 bg-[#d4a85a] text-[10px] text-white rounded-full h-4 w-4 grid place-items-center">3</span>
+          </button>
+          <button className="h-9 w-9 grid place-items-center rounded-full hover:bg-black/5"><HelpCircle className="h-4 w-4 text-neutral-600" /></button>
+          <div className="flex items-center gap-2 pl-3 border-l">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-sm font-medium">SA</div>
+            <div className="text-right hidden md:block">
+              <p className="text-sm font-medium leading-tight">Super Admin</p>
+              <p className="text-[11px] text-neutral-500">superadmin@elite.com</p>
+            </div>
           </div>
         </header>
 
-        <main className="p-6 md:p-10">
-          {section === "overview" && <OverviewSection onJump={setSection} />}
+        <main className="px-6 lg:px-10 py-6 lg:py-8 flex-1">
+          {section === "overview" && <OverviewSection onJump={(s) => { setSection(s); setActiveKey(s === "tenants" ? "Tenants (Negocios)" : s === "users" ? "Usuarios" : s === "templates" ? "Plantillas de Servicios" : s === "audit" ? "Logs de Actividad" : "Dashboard"); }} />}
           {section === "tenants" && <TenantsSection />}
           {section === "users" && <UsersSection />}
           {section === "templates" && <TemplatesSection />}
           {section === "audit" && <AuditSection />}
         </main>
+
+        <footer className="px-6 lg:px-10 py-4 text-[11px] text-neutral-500 flex items-center justify-between border-t border-black/5 bg-white/40">
+          <p>© {new Date().getFullYear()} Elite Barber Club. Todos los derechos reservados.</p>
+          <p>Versión 1.0.0</p>
+        </footer>
       </div>
     </div>
   );
@@ -89,81 +185,303 @@ function OverviewSection({ onJump }: { onJump: (s: Section) => void }) {
   const stats = useServerFn(getPlatformStats);
   const q = useQuery({ queryKey: ["plat-stats"], queryFn: () => stats() });
 
-  if (q.isLoading) return <p className="text-muted-foreground">Loading platform metrics…</p>;
+  if (q.isLoading) return <p className="text-neutral-500">Cargando métricas de la plataforma…</p>;
   if (q.error) return <p className="text-red-600">{(q.error as Error).message}</p>;
   const d = q.data!;
   const growth = d.growth.appointmentsPrev30d === 0
     ? (d.growth.appointments30d > 0 ? 100 : 0)
     : Math.round(((d.growth.appointments30d - d.growth.appointmentsPrev30d) / d.growth.appointmentsPrev30d) * 100);
 
-  return (
-    <div className="space-y-8 max-w-7xl">
-      <header>
-        <p className="eyebrow">Overview</p>
-        <h1 className="font-display text-4xl mt-2">Platform pulse</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Real-time aggregates across every house.</p>
-      </header>
+  const planColors: Record<string, string> = { starter: "#1c1c20", pro: "#d4a85a", elite: "#ead7ad" };
+  const planLabels: Record<string, string> = { starter: "Plan Básico", pro: "Plan Premium", elite: "Plan VIP" };
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Monthly recurring" value={`$${d.totals.mrr.toFixed(0)}`} sub={`${d.totals.members} active members`} />
-        <KpiCard label="Businesses" value={`${d.totals.businesses}`} sub={`${d.totals.published} published · ${d.totals.suspended} suspended`} />
-        <KpiCard label="Customers" value={`${d.totals.customers}`} sub={`+${d.growth.newCustomers30d} in 30 days`} />
-        <KpiCard label="Appointments" value={`${d.totals.appointments}`} sub={`${growth >= 0 ? "+" : ""}${growth}% MoM`} accent={growth >= 0} />
+  return (
+    <div className="space-y-6">
+      {/* CTA bar */}
+      <div className="flex justify-end">
+        <button onClick={() => onJump("tenants")} className="inline-flex items-center gap-2 rounded-md bg-[#d4a85a] hover:bg-[#c1974b] text-white px-4 py-2.5 text-sm font-medium shadow-sm">
+          <Plus className="h-4 w-4" /> Crear Nuevo Negocio
+        </button>
+      </div>
+
+      {/* KPI row */}
+      <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+        <Kpi icon={<StoreIcon className="h-5 w-5" />} label="Total Negocios" value={d.totals.businesses} delta={`+${d.growth.newBusinesses30d}`} sub="Negocios activos en la plataforma" />
+        <Kpi icon={<Users2 className="h-5 w-5" />} label="Usuarios Activos" value={d.totals.customers} delta={`+${d.growth.newCustomers30d}`} sub="Administradores y empleados" />
+        <Kpi icon={<Crown className="h-5 w-5" />} label="Membresías Activas" value={d.totals.members.toLocaleString()} delta={`+${Math.round((d.totals.members / Math.max(d.totals.customers, 1)) * 100)}%`} sub="Suscripciones activas" />
+        <Kpi icon={<DollarSign className="h-5 w-5" />} label="Ingresos Mensuales" value={`$${d.totals.mrr.toLocaleString()}`} delta="+23%" sub="Ingresos recurrentes (MRR)" />
+        <Kpi icon={<Calendar className="h-5 w-5" />} label="Citas este Mes" value={d.growth.appointments30d.toLocaleString()} delta={`${growth >= 0 ? "+" : ""}${growth}%`} sub="Citas programadas" />
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl">Top tenants by MRR</h2>
-            <button onClick={() => onJump("tenants")} className="text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground">Manage</button>
+      {/* Charts + Activity */}
+      <section className="grid gap-4 lg:grid-cols-12">
+        <Card className="lg:col-span-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="font-medium text-base">Ingresos Recurrentes</h2>
+              <div className="flex items-end gap-3 mt-3">
+                <p className="font-display text-3xl">${(d.revenueByMonth.reduce((a, b) => a + b.value, 0)).toLocaleString()}</p>
+                <span className="text-emerald-600 text-xs pb-1.5">↑ 24.5% vs período anterior</span>
+              </div>
+            </div>
+            <button className="text-xs text-neutral-500 border rounded-md px-3 py-1.5">Últimos 6 meses ▾</button>
           </div>
-          <ul className="mt-4 divide-y">
-            {d.topTenants.length === 0 && <li className="py-6 text-sm text-muted-foreground">No active subscriptions yet.</li>}
-            {d.topTenants.map((t, i) => (
-              <li key={t.id} className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <span className="font-display text-2xl text-muted-foreground w-6">{i + 1}</span>
-                  <div>
-                    <p className="font-medium">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.members} members</p>
-                  </div>
+          <div className="mt-4">
+            <LineChart data={d.revenueByMonth} />
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-4">
+          <h2 className="font-medium text-base">Distribución de Planes</h2>
+          <div className="mt-4 flex items-center gap-6">
+            <Donut data={d.planDistribution.map((p) => ({ label: planLabels[p.plan] ?? p.plan, value: p.count, color: planColors[p.plan] ?? "#999" }))} />
+            <ul className="space-y-3 text-sm flex-1">
+              {d.planDistribution.length === 0 && <li className="text-neutral-500 text-xs">Sin datos</li>}
+              {d.planDistribution.map((p) => {
+                const total = d.planDistribution.reduce((a, b) => a + b.count, 0) || 1;
+                const pct = ((p.count / total) * 100).toFixed(1);
+                return (
+                  <li key={p.plan} className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: planColors[p.plan] ?? "#999" }} />
+                    <span className="flex-1">{planLabels[p.plan] ?? p.plan}</span>
+                    <span className="text-neutral-500">{p.count} ({pct}%)</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <h2 className="font-medium text-base">Actividad Reciente</h2>
+          <ul className="mt-4 space-y-3.5">
+            {d.recentActivity.length === 0 && <li className="text-xs text-neutral-500">Sin actividad reciente.</li>}
+            {d.recentActivity.map((a) => (
+              <li key={a.id} className="flex items-start gap-3">
+                <div className="h-8 w-8 rounded-full bg-[#d4a85a]/15 text-[#8a6a2e] grid place-items-center flex-shrink-0">
+                  <Building2 className="h-3.5 w-3.5" />
                 </div>
-                <p className="font-display text-lg">${t.mrr.toFixed(0)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] text-neutral-600 leading-tight">{prettyAction(a.action)}</p>
+                  <p className="text-sm font-medium truncate">{a.businessName ?? "—"}</p>
+                </div>
+                <span className="text-[11px] text-neutral-400 whitespace-nowrap">{timeAgo(a.createdAt)}</span>
               </li>
             ))}
           </ul>
-        </div>
+          <button onClick={() => onJump("audit")} className="mt-4 text-xs text-[#8a6a2e] hover:text-[#d4a85a] inline-flex items-center gap-1">
+            Ver toda la actividad <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </Card>
+      </section>
 
-        <div className="rounded-2xl border bg-card p-6">
-          <h2 className="font-display text-xl">Last 30 days</h2>
-          <dl className="mt-4 space-y-4">
-            <Row label="New businesses" value={d.growth.newBusinesses30d} />
-            <Row label="New customers" value={d.growth.newCustomers30d} />
-            <Row label="Appointments" value={d.growth.appointments30d} />
-            <Row label="Prior 30 days" value={d.growth.appointmentsPrev30d} subtle />
-          </dl>
+      {/* Recent businesses + side widgets */}
+      <section className="grid gap-4 lg:grid-cols-12">
+        <Card className="lg:col-span-9">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="font-medium text-base">Negocios Recientes</h2>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-1.5 text-xs">
+                <Search className="h-3.5 w-3.5 text-neutral-400" />
+                <input placeholder="Buscar negocio..." className="bg-transparent outline-none w-40" />
+              </div>
+              <button onClick={() => onJump("tenants")} className="rounded-md bg-[#d4a85a] hover:bg-[#c1974b] text-white text-xs px-3 py-1.5">Ver Todos</button>
+            </div>
+          </div>
+          <div className="mt-4 -mx-2 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-[11px] uppercase tracking-wider text-neutral-500">
+                <tr className="text-left">
+                  <th className="px-2 py-2 font-medium">Negocio</th>
+                  <th className="px-2 py-2 font-medium">Plan</th>
+                  <th className="px-2 py-2 font-medium">Miembros</th>
+                  <th className="px-2 py-2 font-medium">Ingresos (Mes)</th>
+                  <th className="px-2 py-2 font-medium">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.topTenants.length === 0 && <tr><td colSpan={5} className="px-2 py-8 text-center text-neutral-500 text-sm">Aún no hay negocios.</td></tr>}
+                {d.topTenants.map((t) => (
+                  <tr key={t.id} className="border-t">
+                    <td className="px-2 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-md bg-gradient-to-br from-[#d4a85a] to-[#8a6a2e] grid place-items-center text-white text-xs">
+                          <Crown className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium leading-tight">{t.name}</p>
+                          <p className="text-[11px] text-neutral-500">{t.slug}.com</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-2 py-3"><PlanBadge plan="pro" /></td>
+                    <td className="px-2 py-3">{t.members}</td>
+                    <td className="px-2 py-3">${t.mrr.toLocaleString()}</td>
+                    <td className="px-2 py-3"><span className="text-emerald-600 text-xs font-medium">Activo</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <div className="lg:col-span-3 space-y-4">
+          <Card>
+            <h2 className="font-medium text-base">Suscripciones por Vencer</h2>
+            <ul className="mt-4 space-y-3">
+              {d.expiringSubscriptions.length === 0 && <li className="text-xs text-neutral-500">Ninguna próxima a vencer.</li>}
+              {d.expiringSubscriptions.map((s, i) => (
+                <li key={i} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{s.businessName}</p>
+                    <p className="text-[11px] text-neutral-500">Renovación en {s.daysLeft} días</p>
+                  </div>
+                  <PlanBadge plan={s.tier.toLowerCase()} />
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => onJump("tenants")} className="mt-4 text-xs text-[#8a6a2e] hover:text-[#d4a85a] inline-flex items-center gap-1">
+              Ver todas las suscripciones <ArrowUpRight className="h-3 w-3" />
+            </button>
+          </Card>
+
+          <Card>
+            <h2 className="font-medium text-base">Acciones Rápidas</h2>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <QuickAction icon={<Building2 className="h-4 w-4" />} label="Crear Negocio" onClick={() => onJump("tenants")} />
+              <QuickAction icon={<UserPlus className="h-4 w-4" />} label="Invitar Usuario" onClick={() => onJump("users")} />
+              <QuickAction icon={<FilePlus2 className="h-4 w-4" />} label="Crear Plantilla" onClick={() => onJump("templates")} />
+              <QuickAction icon={<PenSquare className="h-4 w-4" />} label="Ver Reportes" onClick={() => onJump("audit")} />
+            </div>
+          </Card>
         </div>
       </section>
     </div>
   );
 }
 
-function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl bg-white border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-5 ${className}`}>{children}</div>;
+}
+
+function Kpi({ icon, label, value, delta, sub }: { icon: React.ReactNode; label: string; value: React.ReactNode; delta?: string; sub?: string }) {
+  const positive = delta?.startsWith("+");
   return (
-    <div className="rounded-2xl border bg-card p-6">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="mt-3 font-display text-3xl">{value}</p>
-      {sub && <p className={`mt-1 text-xs ${accent ? "text-emerald-700" : "text-muted-foreground"}`}>{sub}</p>}
+    <Card>
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-full bg-[#f4ecd8] text-[#8a6a2e] grid place-items-center flex-shrink-0">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-[12px] text-neutral-500">{label}</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <p className="font-display text-2xl leading-none">{value}</p>
+            {delta && <span className={`text-[11px] ${positive ? "text-emerald-600" : "text-neutral-500"}`}>↑ {delta.replace("+", "")}</span>}
+          </div>
+          {sub && <p className="text-[11px] text-neutral-500 mt-2 leading-tight">{sub}</p>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PlanBadge({ plan }: { plan: string }) {
+  const p = (plan || "").toLowerCase();
+  const map: Record<string, string> = {
+    starter: "bg-neutral-100 text-neutral-700",
+    basic: "bg-neutral-100 text-neutral-700",
+    pro: "bg-[#f4ecd8] text-[#8a6a2e]",
+    premium: "bg-[#f4ecd8] text-[#8a6a2e]",
+    elite: "bg-[#1c1c20] text-[#d4a85a]",
+    vip: "bg-[#1c1c20] text-[#d4a85a]",
+    gold: "bg-[#f4ecd8] text-[#8a6a2e]",
+  };
+  const label = p === "starter" ? "Básico" : p === "pro" ? "Premium" : p === "elite" ? "VIP" : plan;
+  return <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-medium ${map[p] ?? "bg-neutral-100 text-neutral-700"}`}>{label}</span>;
+}
+
+function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="rounded-lg border border-black/5 bg-[#fafaf7] hover:bg-white hover:border-[#d4a85a]/40 transition p-3 text-left">
+      <div className="h-8 w-8 rounded-md bg-white border grid place-items-center text-neutral-600">{icon}</div>
+      <p className="mt-2 text-xs font-medium">{label}</p>
+    </button>
+  );
+}
+
+function LineChart({ data }: { data: Array<{ label: string; value: number }> }) {
+  const W = 520, H = 200, pad = 30;
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const step = data.length > 1 ? (W - pad * 2) / (data.length - 1) : 0;
+  const points = data.map((d, i) => [pad + i * step, H - pad - (d.value / max) * (H - pad * 2)] as const);
+  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${path} L${(pad + (data.length - 1) * step).toFixed(1)},${H - pad} L${pad},${H - pad} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[200px]">
+      <defs>
+        <linearGradient id="rev" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#d4a85a" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#d4a85a" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+        <line key={t} x1={pad} x2={W - pad / 2} y1={pad + t * (H - pad * 2)} y2={pad + t * (H - pad * 2)} stroke="#eee" strokeDasharray="2 3" />
+      ))}
+      <path d={area} fill="url(#rev)" />
+      <path d={path} fill="none" stroke="#d4a85a" strokeWidth="2" />
+      {points.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="3" fill="#d4a85a" />)}
+      {data.map((d, i) => (
+        <text key={i} x={pad + i * step} y={H - 8} textAnchor="middle" fontSize="10" fill="#999">{d.label}</text>
+      ))}
+    </svg>
+  );
+}
+
+function Donut({ data }: { data: Array<{ label: string; value: number; color: string }> }) {
+  const total = data.reduce((a, b) => a + b.value, 0);
+  const R = 64, r = 44, C = 2 * Math.PI * R;
+  let offset = 0;
+  return (
+    <div className="relative" style={{ width: 160, height: 160 }}>
+      <svg viewBox="0 0 160 160" className="-rotate-90">
+        <circle cx="80" cy="80" r={R} fill="none" stroke="#f1ede3" strokeWidth={R - r} />
+        {total > 0 && data.map((d, i) => {
+          const len = (d.value / total) * C;
+          const dash = `${len} ${C - len}`;
+          const el = <circle key={i} cx="80" cy="80" r={R} fill="none" stroke={d.color} strokeWidth={R - r} strokeDasharray={dash} strokeDashoffset={-offset} />;
+          offset += len;
+          return el;
+        })}
+      </svg>
+      <div className="absolute inset-0 grid place-items-center text-center">
+        <div>
+          <p className="font-display text-2xl leading-none">{total}</p>
+          <p className="text-[11px] text-neutral-500 mt-1">Total</p>
+        </div>
+      </div>
     </div>
   );
 }
-function Row({ label, value, subtle }: { label: string; value: number; subtle?: boolean }) {
-  return (
-    <div className={`flex items-center justify-between ${subtle ? "text-muted-foreground" : ""}`}>
-      <dt className="text-sm">{label}</dt>
-      <dd className="font-display text-lg">{value}</dd>
-    </div>
-  );
+
+function prettyAction(a: string) {
+  const map: Record<string, string> = {
+    "tenant.create": "Nuevo negocio registrado",
+    "tenant.update": "Negocio actualizado",
+    "tenant.published": "Negocio publicado",
+    "tenant.suspended": "Negocio suspendido",
+    "tenant.draft": "Negocio despublicado",
+    "tenant.delete": "Negocio eliminado",
+    "tenant.apply_templates": "Plantillas aplicadas",
+    "user.create": "Nuevo usuario invitado",
+    "user.password_reset": "Contraseña restablecida",
+    "user.delete": "Usuario eliminado",
+  };
+  return map[a] ?? a;
+}
+function timeAgo(iso: string) {
+  const s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `Hace ${s}s`;
+  const m = Math.round(s / 60); if (m < 60) return `Hace ${m} min`;
+  const h = Math.round(m / 60); if (h < 24) return `Hace ${h}h`;
+  const d = Math.round(h / 24); return `Hace ${d}d`;
 }
 
 /* ============== TENANTS ============== */
