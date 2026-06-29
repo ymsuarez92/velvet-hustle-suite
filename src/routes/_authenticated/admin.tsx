@@ -619,7 +619,7 @@ function TenantsSection() {
                 <td className="px-5 py-4"><StatusPill status={t.status} /></td>
                 <td className="px-5 py-4 text-right">
                   <div className="inline-flex flex-wrap justify-end gap-1.5">
-                    <Link to="/b/$slug" params={{ slug: t.slug }} className="rounded-full border px-3 py-1 text-xs">View</Link>
+                    <Link to="/b/$slug" params={{ slug: t.slug }} target="_blank" rel="noreferrer" className="rounded-full border border-[color:var(--bronze)] px-3 py-1 text-xs text-[color:var(--bronze)] hover:bg-[color:var(--bronze)] hover:text-white transition">Ver sitio ↗</Link>
                     <Link to="/b/$slug/admin" params={{ slug: t.slug }} className="rounded-full border px-3 py-1 text-xs">Admin</Link>
                     <button onClick={() => setEdit(t)} className="rounded-full border px-3 py-1 text-xs">Edit</button>
                     <button onClick={() => {
