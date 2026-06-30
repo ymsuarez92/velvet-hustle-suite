@@ -656,7 +656,7 @@ function TenantsSection({ externalSearch = "" }: { externalSearch?: string }) {
   const tQ = useQuery({ queryKey: ["admin", "tenants"], queryFn: () => list() });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "tenants"] });
 
-  const createMut = useMutation({ mutationFn: (i: { slug: string; name: string; city?: string; tagline?: string; plan?: string }) => create({ data: i }), onSuccess: invalidate });
+  const createMut = useMutation({ mutationFn: (i: { slug: string; name: string; city?: string; tagline?: string; plan?: string; ownerEmail?: string }) => create({ data: i }), onSuccess: invalidate });
   const updateMut = useMutation({ mutationFn: (i: { id: string; name?: string; city?: string | null; tagline?: string | null; plan?: string }) => update({ data: i }), onSuccess: invalidate });
   const statusMut = useMutation({ mutationFn: (i: { id: string; status: "draft"|"published"|"suspended" }) => setStatus({ data: i }), onSuccess: invalidate });
   const delMut = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: invalidate });
@@ -837,12 +837,12 @@ function StatusPill({ status }: { status: string }) {
 
 function CreateTenantModal({ onClose, onSubmit, submitting, serviceTemplates, membershipTemplates }: {
   onClose: () => void;
-  onSubmit: (f: { slug: string; name: string; city?: string; tagline?: string; plan?: string; serviceTemplateIds: string[]; membershipTemplateIds: string[] }) => Promise<void>;
+  onSubmit: (f: { slug: string; name: string; city?: string; tagline?: string; plan?: string; ownerEmail?: string; serviceTemplateIds: string[]; membershipTemplateIds: string[] }) => Promise<void>;
   submitting: boolean;
   serviceTemplates: ServiceTemplate[];
   membershipTemplates: MembershipTemplate[];
 }) {
-  const [f, setF] = useState({ slug: "", name: "", city: "", tagline: "", plan: "starter" });
+  const [f, setF] = useState({ slug: "", name: "", city: "", tagline: "", plan: "starter", ownerEmail: "" });
   const [svc, setSvc] = useState<string[]>([]);
   const [mem, setMem] = useState<string[]>([]);
   return (
@@ -861,6 +861,17 @@ function CreateTenantModal({ onClose, onSubmit, submitting, serviceTemplates, me
               <option value="elite">Elite</option>
             </select>
           </label>
+          <div className="sm:col-span-2">
+            <Field
+              label="Owner email (optional — must be existing user)"
+              value={f.ownerEmail}
+              onChange={(v) => setF({ ...f, ownerEmail: v })}
+              placeholder="owner@example.com"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              If the user exists in the platform, they'll be auto-assigned as Business Admin.
+            </p>
+          </div>
         </div>
 
         {(serviceTemplates.length > 0 || membershipTemplates.length > 0) && (
@@ -891,7 +902,7 @@ function CreateTenantModal({ onClose, onSubmit, submitting, serviceTemplates, me
 
         <div className="flex items-center justify-end gap-3">
           <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm">Cancel</button>
-          <button disabled={!f.slug || !f.name || submitting} onClick={() => onSubmit({ ...f, city: f.city || undefined, tagline: f.tagline || undefined, serviceTemplateIds: svc, membershipTemplateIds: mem })} className="btn-luxury">
+          <button disabled={!f.slug || !f.name || submitting} onClick={() => onSubmit({ ...f, city: f.city || undefined, tagline: f.tagline || undefined, ownerEmail: f.ownerEmail || undefined, serviceTemplateIds: svc, membershipTemplateIds: mem })} className="btn-luxury">
             {submitting ? "Creating…" : "Create tenant"}
           </button>
         </div>

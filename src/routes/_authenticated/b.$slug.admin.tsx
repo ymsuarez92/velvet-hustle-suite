@@ -27,7 +27,7 @@ import {
 } from "@/lib/business-admin.functions";
 import {
   getSchedule, updateBusinessHours, addBlockedDate, removeBlockedDate,
-  listAppointments, updateAppointmentStatus,
+  listAppointments, updateAppointmentStatus, createAppointmentAdmin,
   type ScheduleBundle, type AppointmentRow,
 } from "@/lib/booking.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -270,23 +270,56 @@ function OverviewPanel({ slug, bundle, onJump }: { slug: string; bundle: AdminPa
           )}
         </div>
 
-        <div className="rounded-2xl border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-display text-xl">Atajos</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Salta a cualquier sección.</p>
-            </div>
+        <div className="space-y-6">
+          {/* Top servicios */}
+          <div className="rounded-2xl border bg-card p-6">
+            <h3 className="font-display text-xl">Top servicios</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Más solicitados (citas completadas).</p>
+            {q.isLoading ? (
+              <div className="mt-4 space-y-2">
+                {[1,2,3].map((i) => <div key={i} className="h-5 animate-pulse rounded bg-secondary" />)}
+              </div>
+            ) : !o || o.topServices.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">Sin datos aún.</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {o.topServices.map((s, i) => {
+                  const maxCount = o.topServices[0].count;
+                  const pct = Math.round((s.count / maxCount) * 100);
+                  return (
+                    <li key={s.serviceName} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium truncate">{i + 1}. {s.serviceName}</span>
+                        <span className="ml-3 shrink-0 text-muted-foreground">{s.count} citas</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className="h-full rounded-full bg-[color:var(--bronze)]" style={{ width: `${pct}%` }} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
-            {TABS.filter((t) => t.id !== "overview").map((t) => (
-              <button key={t.id} onClick={() => onJump(t.id)}
-                className="group flex h-full flex-col items-start gap-2 rounded-xl border bg-background p-4 text-left transition hover:-translate-y-0.5 hover:border-[color:var(--bronze)] hover:bg-secondary/40 hover:shadow-sm">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-base">{t.icon}</span>
-                <span className="block text-sm font-medium">{t.label}</span>
-                <span className="block text-[11px] leading-snug text-muted-foreground">{t.desc}</span>
-                <span className="mt-auto pt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground group-hover:text-[color:var(--bronze)]">Abrir →</span>
-              </button>
-            ))}
+
+          {/* Atajos */}
+          <div className="rounded-2xl border bg-card p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-xl">Atajos</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Salta a cualquier sección.</p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {TABS.filter((t) => t.id !== "overview").slice(0, 6).map((t) => (
+                <button key={t.id} onClick={() => onJump(t.id)}
+                  className="group flex flex-col items-start gap-1.5 rounded-xl border bg-background p-3 text-left transition hover:-translate-y-0.5 hover:border-[color:var(--bronze)] hover:shadow-sm">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-base">{t.icon}</span>
+                  <span className="block text-xs font-medium">{t.label}</span>
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground group-hover:text-[color:var(--bronze)]">Abrir →</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -585,7 +618,11 @@ function TimeInput({ label, value, onChange, disabled }: { label: string; value:
 function AgendaView({ slug }: { slug: string }) {
   const fetchAppts = useServerFn(listAppointments);
   const updateStatus = useServerFn(updateAppointmentStatus);
+  const createAppt = useServerFn(createAppointmentAdmin);
+  const qc = useQueryClient();
   const [from, setFrom] = useState(new Date().toISOString().slice(0,10));
+  const [showCreate, setShowCreate] = useState(false);
+
   const q = useQuery({
     queryKey: ["appts", slug, from],
     queryFn: () => fetchAppts({ data: { slug, from: new Date(from + "T00:00:00").toISOString() } }),
@@ -593,6 +630,10 @@ function AgendaView({ slug }: { slug: string }) {
   const statusMut = useMutation({
     mutationFn: (v: { id: string; status: "confirmed"|"cancelled"|"completed"|"no_show" }) => updateStatus({ data: { slug, ...v } }),
     onSuccess: () => q.refetch(),
+  });
+  const createMut = useMutation({
+    mutationFn: (d: any) => createAppt({ data: { slug, ...d } }),
+    onSuccess: () => { q.refetch(); setShowCreate(false); },
   });
 
   const grouped = useMemo<[string, AppointmentRow[]][]>(() => {
@@ -605,50 +646,71 @@ function AgendaView({ slug }: { slug: string }) {
     return Array.from(map.entries()).sort(([a],[b]) => a.localeCompare(b));
   }, [q.data]);
 
+  // Fetch bundle for services list (needed by create modal)
+  const fetchBundle = useServerFn(getBusinessAdminBundle);
+  const bundleQ = useQuery({
+    queryKey: ["admin", "bundle", slug],
+    queryFn: () => fetchBundle({ data: { slug } }),
+    staleTime: 5 * 60_000,
+  });
+  const services = (bundleQ.data as AdminPayload | undefined)?.services ?? [];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-2xl border bg-card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-6">
         <div>
           <h2 className="font-display text-2xl">Agenda</h2>
-          <p className="mt-1 text-sm text-muted-foreground">All upcoming appointments. Updates happen in real time.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {q.data?.length ?? "—"} citas desde la fecha seleccionada.
+          </p>
         </div>
-        <label className="block">
-          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">From</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-2 rounded-md border bg-background px-3 py-2 text-sm" />
-        </label>
+        <div className="flex items-end gap-3 flex-wrap">
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Desde</span>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-2 rounded-md border bg-background px-3 py-2 text-sm" />
+          </label>
+          <button onClick={() => setShowCreate(true)} className="btn-luxury">+ Nueva cita</button>
+        </div>
       </div>
 
-      {q.isLoading && <p>Loading…</p>}
-      {q.data && q.data.length === 0 && <div className="rounded-2xl border bg-card p-10 text-center text-muted-foreground">No appointments scheduled.</div>}
+      {q.isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {q.data && q.data.length === 0 && (
+        <div className="rounded-2xl border bg-card p-10 text-center">
+          <p className="text-muted-foreground">No hay citas programadas.</p>
+          <button onClick={() => setShowCreate(true)} className="mt-4 btn-luxury">Crear primera cita</button>
+        </div>
+      )}
 
       {grouped.map(([day, list]: [string, AppointmentRow[]]) => (
         <section key={day} className="rounded-2xl border bg-card overflow-hidden">
           <header className="border-b bg-secondary/50 px-6 py-3">
-            <p className="font-display text-lg">{new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+            <p className="font-display text-lg">{new Date(day + "T00:00:00").toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}</p>
           </header>
           <ul className="divide-y divide-border">
             {list.map((a: AppointmentRow) => (
-              <li key={a.id} className="grid grid-cols-[80px_1fr_auto] items-center gap-4 px-6 py-4">
-                <div>
-                  <p className="font-display text-xl">{new Date(a.startsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">→ {new Date(a.endsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
+              <li key={a.id} className="grid grid-cols-[72px_1fr_auto] items-start gap-4 px-6 py-4">
+                <div className="pt-0.5">
+                  <p className="font-display text-xl leading-none">{new Date(a.startsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">→ {new Date(a.endsAt).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">{a.customerName} <span className="ml-2 text-muted-foreground font-normal">{a.serviceName ?? ""}</span></p>
-                  <p className="text-xs text-muted-foreground">{a.customerPhone}{a.customerEmail ? ` · ${a.customerEmail}` : ""}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{a.customerName}
+                    {a.serviceName && <span className="ml-2 font-normal text-muted-foreground">{a.serviceName}</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{[a.customerPhone, a.customerEmail].filter(Boolean).join(" · ")}</p>
                   {a.notes && <p className="mt-1 text-xs text-muted-foreground italic">"{a.notes}"</p>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pt-0.5 flex-wrap justify-end">
                   <StatusBadge status={a.status} />
                   <select
                     value={a.status}
                     onChange={(e) => statusMut.mutate({ id: a.id, status: e.target.value as any })}
-                    className="rounded-md border bg-background px-2 py-1 text-xs"
+                    className="rounded-md border bg-background px-2 py-1.5 text-xs"
                   >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="confirmed">Confirmada</option>
+                    <option value="completed">Completada</option>
+                    <option value="cancelled">Cancelada</option>
                     <option value="no_show">No-show</option>
                   </select>
                 </div>
@@ -657,6 +719,102 @@ function AgendaView({ slug }: { slug: string }) {
           </ul>
         </section>
       ))}
+
+      {showCreate && (
+        <CreateAppointmentModal
+          services={services}
+          submitting={createMut.isPending}
+          error={createMut.error as Error | null}
+          onClose={() => setShowCreate(false)}
+          onSubmit={(d) => createMut.mutate(d)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CreateAppointmentModal({ services, submitting, error, onClose, onSubmit }: {
+  services: AdminService[];
+  submitting: boolean;
+  error: Error | null;
+  onClose: () => void;
+  onSubmit: (d: any) => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [f, setF] = useState({
+    serviceId: services[0]?.id ?? "",
+    date: today,
+    time: "10:00",
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    notes: "",
+    status: "confirmed" as "confirmed" | "pending",
+  });
+
+  const startsAt = `${f.date}T${f.time}:00`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border bg-card p-8" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-2xl">Nueva cita</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Crea una cita manualmente para un cliente.</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {/* Service */}
+          <label className="block sm:col-span-2">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Servicio</span>
+            <select value={f.serviceId} onChange={(e) => setF({ ...f, serviceId: e.target.value })}
+              className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm">
+              {services.filter((s) => s.isActive).map((s) => (
+                <option key={s.id} value={s.id}>{s.name} · {s.durationMin} min · ${s.price}</option>
+              ))}
+            </select>
+          </label>
+          {/* Date & time */}
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Fecha</span>
+            <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })}
+              className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm" />
+          </label>
+          <label className="block">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Hora</span>
+            <input type="time" value={f.time} onChange={(e) => setF({ ...f, time: e.target.value })}
+              className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm" />
+          </label>
+          {/* Customer */}
+          <Field label="Nombre del cliente" value={f.customerName} onChange={(v) => setF({ ...f, customerName: v })} placeholder="Juan García" />
+          <Field label="Teléfono" value={f.customerPhone} onChange={(v) => setF({ ...f, customerPhone: v })} placeholder="+1 555-0000" />
+          <div className="sm:col-span-2">
+            <Field label="Email (opcional)" value={f.customerEmail} onChange={(v) => setF({ ...f, customerEmail: v })} placeholder="juan@ejemplo.com" />
+          </div>
+          <label className="block sm:col-span-2">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Notas (opcional)</span>
+            <textarea value={f.notes} rows={2} onChange={(e) => setF({ ...f, notes: e.target.value })}
+              className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm outline-none focus:border-[color:var(--bronze)]"
+              placeholder="Observaciones, preferencias…" />
+          </label>
+          {/* Status */}
+          <label className="block sm:col-span-2">
+            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Estado inicial</span>
+            <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as any })}
+              className="mt-2 w-full rounded-md border bg-background px-4 py-3 text-sm">
+              <option value="confirmed">Confirmada</option>
+              <option value="pending">Pendiente</option>
+            </select>
+          </label>
+        </div>
+        {error && <p className="mt-3 text-sm text-red-600">{error.message}</p>}
+        <div className="mt-8 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em]">Cancelar</button>
+          <button
+            disabled={submitting || !f.serviceId || !f.customerName || !f.date || !f.time}
+            onClick={() => onSubmit({ serviceId: f.serviceId, startsAt, customerName: f.customerName, customerPhone: f.customerPhone || undefined, customerEmail: f.customerEmail || undefined, notes: f.notes || undefined, status: f.status })}
+            className="btn-luxury"
+          >
+            {submitting ? "Guardando…" : "Crear cita"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

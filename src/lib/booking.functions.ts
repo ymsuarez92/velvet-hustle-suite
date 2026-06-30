@@ -206,3 +206,72 @@ export const updateAppointmentStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* -------- ADMIN: fetch active staff for a business -------- */
+export type StaffOption = { id: string; fullName: string; role: string | null };
+
+export const getStaffForBusiness = createServerFn({ method: "GET" })
+  .inputValidator((d: { slug: string }) => d)
+  .handler(async ({ data }): Promise<StaffOption[]> => {
+    // Public: no auth needed — just fetch active staff for the booking dialog
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { storage: undefined, persistSession: false } },
+    );
+    const { data: biz } = await sb.from("businesses").select("id").eq("slug", data.slug).maybeSingle();
+    if (!biz) return [];
+    const { data: rows } = await sb
+      .from("staff")
+      .select("id, full_name, role")
+      .eq("business_id", biz.id)
+      .eq("is_active", true)
+      .order("full_name");
+    return (rows ?? []).map((s: any) => ({ id: s.id, fullName: s.full_name, role: s.role }));
+  });
+
+/* -------- ADMIN: manually create an appointment -------- */
+export const createAppointmentAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    slug: string;
+    serviceId: string;
+    staffId?: string;
+    startsAt: string;
+    customerName: string;
+    customerPhone?: string;
+    customerEmail?: string;
+    notes?: string;
+    status?: "pending" | "confirmed";
+  }) => d)
+  .handler(async ({ context, data }) => {
+    const b = await resolveBusiness(context.supabase, data.slug, context.userId);
+
+    // Get service to compute duration
+    const { data: svc, error: sErr } = await context.supabase
+      .from("services")
+      .select("id, duration_min")
+      .eq("id", data.serviceId)
+      .eq("business_id", b.id)
+      .maybeSingle();
+    if (sErr || !svc) throw new Error("Servicio no encontrado");
+
+    const starts = new Date(data.startsAt);
+    const ends = new Date(starts.getTime() + svc.duration_min * 60_000);
+
+    const { error } = await context.supabase.from("appointments").insert({
+      business_id: b.id,
+      service_id: data.serviceId,
+      staff_id: data.staffId ?? null,
+      starts_at: starts.toISOString(),
+      ends_at: ends.toISOString(),
+      status: data.status ?? "confirmed",
+      customer_name: data.customerName,
+      customer_phone: data.customerPhone ?? null,
+      customer_email: data.customerEmail ?? null,
+      notes: data.notes ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

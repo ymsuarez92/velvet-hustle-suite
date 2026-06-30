@@ -99,7 +99,7 @@ export const listAllTenants = createServerFn({ method: "GET" })
 
 export const createTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { slug: string; name: string; city?: string; tagline?: string; plan?: string }) => d)
+  .inputValidator((d: { slug: string; name: string; city?: string; tagline?: string; plan?: string; ownerEmail?: string }) => d)
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -116,7 +116,21 @@ export const createTenant = createServerFn({ method: "POST" })
       .select("id, slug")
       .single();
     if (error) throw new Error(error.message);
-    await logAudit({ actorUserId: context.userId, businessId: row.id, action: "tenant.create", entity: "business", entityId: row.id, metadata: { slug: data.slug, name: data.name } });
+
+    // Auto-assign owner if email provided
+    if (data.ownerEmail?.trim()) {
+      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const user = list?.users?.find((u) => u.email?.toLowerCase() === data.ownerEmail!.toLowerCase().trim());
+      if (user) {
+        await supabaseAdmin.from("user_roles").upsert(
+          { user_id: user.id, business_id: row.id, role: "business_admin" },
+          { onConflict: "user_id,role,business_id" },
+        );
+      }
+      // If user not found, continue without failing — owner can be assigned later
+    }
+
+    await logAudit({ actorUserId: context.userId, businessId: row.id, action: "tenant.create", entity: "business", entityId: row.id, metadata: { slug: data.slug, name: data.name, ownerEmail: data.ownerEmail } });
     return row;
   });
 

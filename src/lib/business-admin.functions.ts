@@ -603,6 +603,7 @@ export type OwnerOverview = {
     id: string; startsAt: string; customerName: string;
     serviceName: string | null; status: string;
   }[];
+  topServices: { serviceName: string; count: number }[];
 };
 
 export const getOwnerOverview = createServerFn({ method: "GET" })
@@ -617,7 +618,7 @@ export const getOwnerOverview = createServerFn({ method: "GET" })
     const todayStart = new Date(now.toISOString().slice(0, 10) + "T00:00:00").toISOString();
     const todayEnd = new Date(now.toISOString().slice(0, 10) + "T23:59:59").toISOString();
 
-    const [completedRes, upcomingRes, todayRes, subsRes, customersRes] = await Promise.all([
+    const [completedRes, upcomingRes, todayRes, subsRes, customersRes, topSvcRes] = await Promise.all([
       context.supabase
         .from("appointments")
         .select("id, services(price)")
@@ -649,6 +650,12 @@ export const getOwnerOverview = createServerFn({ method: "GET" })
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id)
         .gte("created_at", in30),
+      context.supabase
+        .from("appointments")
+        .select("services(name)", { count: "exact" })
+        .eq("business_id", business.id)
+        .eq("status", "completed")
+        .not("service_id", "is", null),
     ]);
 
     const completed = completedRes.data ?? [];
@@ -657,6 +664,17 @@ export const getOwnerOverview = createServerFn({ method: "GET" })
     );
     const subs = subsRes.data ?? [];
     const mrr = subs.reduce((s: number, r: any) => s + Number(r.memberships?.price ?? 0), 0);
+
+    // Aggregate top services from completed appointments
+    const svcCountMap = new Map<string, number>();
+    for (const a of (topSvcRes.data ?? []) as any[]) {
+      const name = a.services?.name;
+      if (name) svcCountMap.set(name, (svcCountMap.get(name) ?? 0) + 1);
+    }
+    const topServices = Array.from(svcCountMap.entries())
+      .map(([serviceName, count]) => ({ serviceName, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
 
     return {
       estimatedRevenue30d: revenue,
@@ -673,5 +691,6 @@ export const getOwnerOverview = createServerFn({ method: "GET" })
         serviceName: a.services?.name ?? null,
         status: a.status,
       })),
+      topServices,
     };
   });

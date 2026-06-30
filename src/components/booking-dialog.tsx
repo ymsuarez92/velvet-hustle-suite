@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAvailableSlots, createBooking } from "@/lib/booking.functions";
-import { X, Loader2, Check, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { getAvailableSlots, createBooking, getStaffForBusiness } from "@/lib/booking.functions";
+import { X, Loader2, Check, Calendar as CalendarIcon, Clock, User } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,6 +38,7 @@ export function BookingDialog({
 }) {
   const { t, lang } = useI18n();
   const [serviceId, setServiceId] = useState(initialServiceId ?? services[0]?.id ?? "");
+  const [staffId, setStaffId] = useState<string>("any");
   const [date, setDate] = useState(todayISO(1));
   const [slot, setSlot] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -49,10 +50,22 @@ export function BookingDialog({
   useEffect(() => {
     if (open) {
       setServiceId(initialServiceId ?? services[0]?.id ?? "");
+      setStaffId("any");
       setSlot(null);
       setConfirmedId(null);
     }
   }, [open, initialServiceId, services]);
+
+  // Fetch staff list
+  const fetchStaff = useServerFn(getStaffForBusiness);
+  const staffQ = useQuery({
+    queryKey: ["staff-public", slug],
+    queryFn: () => fetchStaff({ data: { slug } }),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+  const staffList = staffQ.data ?? [];
+  const hasStaff = staffList.length > 0;
 
   const fetchSlots = useServerFn(getAvailableSlots);
   const slotsQ = useQuery({
@@ -73,6 +86,7 @@ export function BookingDialog({
 
   const dateOptions = useMemo(() => Array.from({ length: 14 }).map((_, i) => todayISO(i)), []);
   const selectedService = services.find((s) => s.id === serviceId);
+  const selectedStaff = staffList.find((s) => s.id === staffId);
   const [dateOpen, setDateOpen] = useState(false);
 
   if (!open) return null;
@@ -99,6 +113,7 @@ export function BookingDialog({
             <p className="mt-3 text-muted-foreground">
               {selectedService?.name} · {slot && fmtDayLong(slot.slice(0, 10))} · {slot && fmtTimeLoc(slot)}
             </p>
+            {selectedStaff && <p className="mt-1 text-sm text-muted-foreground">{selectedStaff.fullName}</p>}
             <p className="mt-2 text-sm text-muted-foreground">{t("book.willConfirm")}</p>
             <button onClick={onClose} className="btn-luxury mt-8">{t("book.done")}</button>
           </div>
@@ -110,7 +125,6 @@ export function BookingDialog({
             {/* Service */}
             <div className="mt-6 md:mt-8">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("book.service")}</p>
-              {/* Mobile: premium shadcn select */}
               <div className="md:hidden mt-3">
                 <Select value={serviceId} onValueChange={(v) => { setServiceId(v); setSlot(null); }}>
                   <SelectTrigger className="h-12 w-full rounded-xl border bg-background px-4 text-sm font-medium">
@@ -126,7 +140,6 @@ export function BookingDialog({
                   </SelectContent>
                 </Select>
               </div>
-              {/* Desktop: card grid */}
               <div className="mt-3 hidden gap-2 md:grid sm:grid-cols-2">
                 {services.map((s) => (
                   <button key={s.id} onClick={() => { setServiceId(s.id); setSlot(null); }}
@@ -141,10 +154,41 @@ export function BookingDialog({
               </div>
             </div>
 
+            {/* Staff / Barber selection (only if business has active staff) */}
+            {hasStaff && (
+              <div className="mt-6 md:mt-8">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {lang === "es" ? "Barbero (opcional)" : "Barber (optional)"}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {/* "Any" option */}
+                  <button
+                    onClick={() => setStaffId("any")}
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm transition ${staffId === "any" ? "border-[color:var(--bronze)] bg-[color:var(--champagne)]/15 font-medium" : "border-border hover:border-foreground/30"}`}
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    {lang === "es" ? "Cualquier barbero" : "Any barber"}
+                  </button>
+                  {staffList.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setStaffId(s.id)}
+                      className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm transition ${staffId === s.id ? "border-[color:var(--bronze)] bg-[color:var(--champagne)]/15 font-medium" : "border-border hover:border-foreground/30"}`}
+                    >
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[color:var(--bronze)]/15 text-[color:var(--bronze)] text-[10px] font-bold">
+                        {s.fullName[0]?.toUpperCase()}
+                      </span>
+                      {s.fullName}
+                      {s.role && <span className="text-xs text-muted-foreground">· {s.role}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Date */}
             <div className="mt-6 md:mt-8">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("book.date")}</p>
-              {/* Mobile: full date picker */}
               <div className="md:hidden mt-3">
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                   <PopoverTrigger asChild>
@@ -194,7 +238,6 @@ export function BookingDialog({
                 {slotsQ.data && slotsQ.data.length === 0 && <p className="text-sm text-muted-foreground">{t("book.empty")}</p>}
                 {slotsQ.data && slotsQ.data.length > 0 && (
                   <>
-                    {/* Mobile: premium select */}
                     <div className="md:hidden">
                       <Select value={slot ?? ""} onValueChange={(v) => setSlot(v || null)}>
                         <SelectTrigger className="h-12 w-full rounded-xl border bg-background px-4 text-sm font-medium">
@@ -207,7 +250,6 @@ export function BookingDialog({
                         </SelectContent>
                       </Select>
                     </div>
-                    {/* Desktop: chips */}
                     <div className="hidden flex-wrap gap-2 md:flex">
                       {slotsQ.data.map((time) => (
                         <button key={time} onClick={() => setSlot(time)}
@@ -221,7 +263,7 @@ export function BookingDialog({
               </div>
             </div>
 
-            {/* Form */}
+            {/* Customer form */}
             {slot && (
               <div className="mt-6 md:mt-8 grid gap-3 sm:grid-cols-2">
                 <Input label={t("book.name")} value={name} onChange={setName} placeholder={t("book.namePh")} />
@@ -242,6 +284,9 @@ export function BookingDialog({
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <span className="inline-flex items-center gap-1.5"><CalendarIcon className="h-4 w-4 text-[color:var(--bronze)]" /> {fmtDayLong(slot.slice(0,10))}</span>
                     <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-[color:var(--bronze)]" /> {fmtTimeLoc(slot)}</span>
+                    {selectedStaff && (
+                      <span className="inline-flex items-center gap-1.5"><User className="h-4 w-4 text-[color:var(--bronze)]" /> {selectedStaff.fullName}</span>
+                    )}
                   </div>
                   <button
                     disabled={bookMut.isPending || !name.trim() || phone.trim().length < 6}

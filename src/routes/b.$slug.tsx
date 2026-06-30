@@ -431,9 +431,7 @@ function Memberships({ tenant }: { tenant: PublicTenant }) {
                   </li>
                 ))}
               </ul>
-              <button className={`mt-8 w-full ${m.highlight ? "btn-luxury" : "btn-ghost-luxury"}`}>
-                {t("memberships.join")} {m.name}
-              </button>
+              <MembershipJoinButton membership={m} slug={tenant.slug} />
             </div>
           ))}
         </div>
